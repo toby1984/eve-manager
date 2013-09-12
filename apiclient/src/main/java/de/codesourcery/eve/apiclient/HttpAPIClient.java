@@ -27,22 +27,23 @@ import java.util.Set;
 
 import org.apache.commons.lang.ArrayUtils;
 
+import de.codesourcery.eve.apiclient.datamodel.APIKey.KeyRole;
 import de.codesourcery.eve.apiclient.datamodel.APIResponse;
 import de.codesourcery.eve.apiclient.datamodel.RequestOptions;
 import de.codesourcery.eve.apiclient.datamodel.ServerStatus;
 import de.codesourcery.eve.apiclient.datamodel.SkillInTraining;
 import de.codesourcery.eve.apiclient.datamodel.SkillQueueEntry;
-import de.codesourcery.eve.apiclient.datamodel.APIKey.KeyRole;
 import de.codesourcery.eve.apiclient.exceptions.APIErrorException;
 import de.codesourcery.eve.apiclient.exceptions.APIUnavailableException;
 import de.codesourcery.eve.apiclient.parsers.AssetListParser;
 import de.codesourcery.eve.apiclient.parsers.CharacterIndustryJobsParser;
 import de.codesourcery.eve.apiclient.parsers.CharacterSheetParser;
-import de.codesourcery.eve.apiclient.parsers.NPCCorpCharacterStandingParser;
 import de.codesourcery.eve.apiclient.parsers.ConquerableStationsParser;
+import de.codesourcery.eve.apiclient.parsers.ConquerableStationsParser.Outpost;
 import de.codesourcery.eve.apiclient.parsers.FactionStandingParser;
 import de.codesourcery.eve.apiclient.parsers.GetAvailableCharactersParser;
 import de.codesourcery.eve.apiclient.parsers.MarketOrderParser;
+import de.codesourcery.eve.apiclient.parsers.NPCCorpCharacterStandingParser;
 import de.codesourcery.eve.apiclient.parsers.ResolveNamesParser;
 import de.codesourcery.eve.apiclient.parsers.ServerStatusParser;
 import de.codesourcery.eve.apiclient.parsers.SkillInTrainingParser;
@@ -50,19 +51,17 @@ import de.codesourcery.eve.apiclient.parsers.SkillQueueParser;
 import de.codesourcery.eve.apiclient.parsers.SkillTreeParser;
 import de.codesourcery.eve.apiclient.parsers.TransactionTypeParser;
 import de.codesourcery.eve.apiclient.parsers.WalletTransactionsParser;
-import de.codesourcery.eve.apiclient.parsers.ConquerableStationsParser.Outpost;
 import de.codesourcery.eve.skills.datamodel.AssetList;
 import de.codesourcery.eve.skills.datamodel.CharacterID;
-import de.codesourcery.eve.skills.datamodel.NPCCorpStandings;
 import de.codesourcery.eve.skills.datamodel.FactionStandings;
 import de.codesourcery.eve.skills.datamodel.IBaseCharacter;
 import de.codesourcery.eve.skills.datamodel.ICharacter;
 import de.codesourcery.eve.skills.datamodel.IndustryJob;
 import de.codesourcery.eve.skills.datamodel.MarketOrder;
 import de.codesourcery.eve.skills.datamodel.MarketTransaction;
+import de.codesourcery.eve.skills.datamodel.NPCCorpStandings;
 import de.codesourcery.eve.skills.datamodel.SkillTree;
 import de.codesourcery.eve.skills.datamodel.TransactionType;
-import de.codesourcery.eve.skills.db.datamodel.Corporation;
 
 /**
  * Eve Online(tm) API client that works over HTTP.

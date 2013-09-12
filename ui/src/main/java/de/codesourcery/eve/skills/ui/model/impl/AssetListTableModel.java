@@ -29,6 +29,7 @@ import de.codesourcery.eve.skills.ui.model.TableColumnBuilder;
 
 public abstract class AssetListTableModel extends AbstractTableModel<Asset> implements IViewFilterAware<Asset> {
 
+	@SuppressWarnings("unused")
 	private static final Logger log = Logger
 			.getLogger(AssetListTableModel.class);
 	

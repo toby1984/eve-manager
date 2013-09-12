@@ -27,7 +27,6 @@ import de.codesourcery.eve.skills.datamodel.ICharacter;
 import de.codesourcery.eve.skills.datamodel.IStaticDataModel;
 import de.codesourcery.eve.skills.datamodel.Standing;
 import de.codesourcery.eve.skills.db.datamodel.Faction;
-import de.codesourcery.eve.skills.db.datamodel.NPCCorporation;
 import de.codesourcery.eve.skills.utils.ISystemClock;
 
 public class FactionStandingParser extends AbstractResponseParser<FactionStandings> {

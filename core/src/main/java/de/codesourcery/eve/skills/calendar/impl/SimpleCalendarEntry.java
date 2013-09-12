@@ -19,9 +19,7 @@ import java.util.Date;
 
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
-import org.apache.commons.lang.time.DateUtils;
 
-import de.codesourcery.eve.skills.utils.ISystemClock;
 import de.codesourcery.eve.skills.calendar.ICalendarEntry;
 import de.codesourcery.eve.skills.calendar.ICalendarEntryPayload;
 import de.codesourcery.planning.DateRange;

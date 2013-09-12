@@ -28,13 +28,13 @@ import javax.swing.event.ListDataListener;
 
 import de.codesourcery.eve.skills.ui.utils.Misc;
 
-public final class DefaultComboBoxModel<T> implements ComboBoxModel, ListDataListener  {
+public final class DefaultComboBoxModel<T> implements ComboBoxModel<T>, ListDataListener  {
 
 	// guarded-by: listeners
 	private final List<ListDataListener> listeners =
 		new ArrayList<ListDataListener>();
 	
-	private ListModel model;
+	private ListModel<T> model;
 	private T selected;
 	
 	public DefaultComboBoxModel() {
@@ -54,15 +54,15 @@ public final class DefaultComboBoxModel<T> implements ComboBoxModel, ListDataLis
 		this( createListModel( Collections.unmodifiableList(data ) ) );
 	}
 	
-	protected static <T> ListModel createListModel(final List<T> data) {
-		return new ListModel() {
+	protected static <T> ListModel<T> createListModel(final List<T> data) {
+		return new ListModel<T>() {
 
 			@Override
 			public void addListDataListener(ListDataListener l) {
 			}
 
 			@Override
-			public Object getElementAt(int index) {
+			public T getElementAt(int index) {
 				return data.get( index );
 			}
 
@@ -76,7 +76,7 @@ public final class DefaultComboBoxModel<T> implements ComboBoxModel, ListDataLis
 			}};
 	}
 	
-	public DefaultComboBoxModel(ListModel model) {
+	public DefaultComboBoxModel(ListModel<T> model) {
 		this.model = model;
 		model.addListDataListener( this );
 	}
@@ -113,7 +113,7 @@ public final class DefaultComboBoxModel<T> implements ComboBoxModel, ListDataLis
 	}
 
 	@Override
-	public Object getElementAt(int index) {
+	public T getElementAt(int index) {
 		return model.getElementAt( index );
 	}
 

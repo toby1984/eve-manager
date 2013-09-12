@@ -23,9 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -33,7 +31,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import de.codesourcery.eve.apiclient.IAPIClient;
-import de.codesourcery.eve.apiclient.IAPIClient.EntityType;
 import de.codesourcery.eve.apiclient.datamodel.APIResponse;
 import de.codesourcery.eve.apiclient.datamodel.RequestOptions;
 import de.codesourcery.eve.apiclient.exceptions.UnparseableResponseException;
@@ -49,7 +46,6 @@ import de.codesourcery.eve.skills.utils.ISystemClock;
 
 public class AssetListParser extends AbstractResponseParser<AssetList>
 {
-
     private static final Logger log = Logger.getLogger( AssetListParser.class );
 
     public static final URI URI = toURI( "/char/AssetList.xml.aspx" );

@@ -94,8 +94,8 @@ public class MainFrame extends CustomFrame implements ActionListener,ItemListene
 	// UI
 	private final JPanel toolbar = new JPanel();
 	
-	private final JComboBox accountSelector = new JComboBox();
-	private final JComboBox charSelector = new JComboBox();
+	private final JComboBox<UserAccount> accountSelector = new JComboBox<UserAccount>();
+	private final JComboBox<ICharacter> charSelector = new JComboBox<ICharacter>();
 
 	// buttons
 	private final JButton quitButton = new JButton("Quit");
