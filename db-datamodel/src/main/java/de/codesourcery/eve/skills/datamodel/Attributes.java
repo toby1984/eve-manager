@@ -83,39 +83,6 @@ public class Attributes {
 		return ( baseValue + implants );
 	}
 	
-	/**
-	 * Returns the attribute modifier value
-	 * from learning skills (only!) for a given attribute.
-	 * 
-	 * @param character
-	 * @param tree
-	 * @param attributeType
-	 * @return
-	 */
-//	private float getAttributeModifierFromLearningSkills( SkillTree tree , AttributeType attributeType) 
-//	{
-//		float result = 0;
-//		for ( LearningSkillType skillType : LearningSkillType.getAffectingSkills( attributeType ) ) {
-//			
-//			if ( skillType == LearningSkillType.LEARNING ) {
-//				// learnings skill level affects all base attribute values
-//				// , needs to be applied to attribute base value
-//				continue;
-//			}
-//			
-//			final int basicSkillId =
-//				skillType.getBasicSkillTypeId();
-//			
-//			result+= 5; // character.getCurrentLevel( tree.getSkill( basicSkillId ) );
-//			
-//			// final int advancedSkillId = skillType.getAdvancedSkillTypeId();
-//			
-//			result+= 5; // character.getCurrentLevel( tree.getSkill( advancedSkillId ) );
-//		}
-//		
-//		return result;
-//	}
-	
 	public Attribute getBaseAttribute(AttributeType t) {
 		return getAttribute( t ); 
 	}
