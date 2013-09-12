@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright 2004-2009 Tobias Gierke <tobias.gierke@code-sourcery.de>
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xmlns:aop="http://www.springframework.org/schema/aop"
+     xmlns:tx="http://www.springframework.org/schema/tx"
+     xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+     http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.5.xsd
+     http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
+  
+   <!--  Application config file -->	
+   <bean id="appconfig-provider" class="de.codesourcery.eve.skills.ui.config.DefaultAppConfigProvider">
+   	<constructor-arg><value>conf/appconfig.properties</value></constructor-arg>
+   </bean>
+   
+   <!-- BeanFactoryPostProcessor: Used to dynamically inject beans from this ApplicationContext-->
+   <bean id="bean-injector" class="de.codesourcery.eve.skills.util.SpringBeanInjector" scope="prototype"/>
+   
+    <bean id="appconfig" factory-bean="appconfig-provider" factory-method="getAppConfig" />
+    
+    <bean id="useraccount-store-factory" class="de.codesourcery.eve.skills.ui.UserAccountStoreFactory">
+    	<constructor-arg><ref local="appconfig-provider"/></constructor-arg>
+    	<constructor-arg><ref local="api-client"/></constructor-arg>
+    </bean>
+    
+    <bean id="useraccount-store" factory-bean="useraccount-store-factory" factory-method="createInstance" />
+    
+    <bean id="payloadtype-factory" class="de.codesourcery.eve.skills.calendar.impl.DefaultCalendarEntryPayloadTypeFactory"/>
+    
+    <bean id="calendar-manager" class="de.codesourcery.eve.skills.calendar.impl.DefaultCalendarManager">
+    	<property name="payloadTypeFactory" ref="payloadtype-factory" />
+    	<property name="inputFile"><value>data/calendar.xml</value></property>
+    </bean>
+    
+    <bean id="calendar-reminder" class="de.codesourcery.eve.skills.ui.components.impl.planning.CalendarReminder">
+        <constructor-arg><ref local="calendar-manager"/></constructor-arg>
+    	<constructor-arg><ref local="system-clock"/></constructor-arg>
+    </bean>
+    
+    <!-- API request cache -->
+    <bean id="api-cache-provider" class="de.codesourcery.eve.apiclient.cache.FilesystemCacheProvider">
+    	<constructor-arg><value>cache</value></constructor-arg>
+    	<constructor-arg><ref local="system-clock"/></constructor-arg>
+
+    	<property name="cacheOptions">
+    		<props>
+    		  <prop key="filecache.write_immediately">true</prop>
+    		  <prop key="memcache.cache_size">1024000</prop>
+    		</props>
+    	</property>
+    </bean>
+    
+    <bean id="shoppinglist-dao" class="de.codesourcery.eve.skills.dao.impl.FileShoppingListDAO">
+    	<property name="dataModel" ref="static-datamodel"/>
+    	<property name="dataFile"><value>data/shoppinglists.xml</value></property>
+    </bean>
+    
+    <bean id="shoppinglist-manager" class="de.codesourcery.eve.skills.production.ShoppingListManager">
+    	<property name="shoppingListDAO" ref="shoppinglist-dao"/>
+    </bean>
+    
+    <bean id="asset-manager" class="de.codesourcery.eve.skills.assets.impl.DefaultAssetManager">
+    	<property name="apiClient" ref="api-client" />
+    	<property name="userAccountStore" ref="useraccount-store" />
+    </bean>
+    
+    <bean id="resource-manager-factory" class="de.codesourcery.eve.skills.production.ResourceManagerFactory">
+        	<constructor-arg><ref local="asset-manager" /></constructor-arg>
+    </bean>
+    
+    <bean id="system-clock" class="de.codesourcery.eve.apiclient.utils.DefaultSystemClock" />
+    
+    <bean id="blueprint-library" class="de.codesourcery.eve.skills.production.impl.FileBlueprintLibrary">
+         <constructor-arg><ref local="static-datamodel"/></constructor-arg>
+    	 <constructor-arg><ref local="asset-manager"/></constructor-arg>
+    	 <constructor-arg><ref local="useraccount-store"/></constructor-arg>
+    	 <property name="inputFile"><value>data/blueprints.csv</value></property>
+    </bean>
+    
+    <!--  Order of bean marketdata-provider and priceinfo-store IS IMPORTANT.
+          Spring will fail with a circular reference error if the order is 
+          the other way around
+     -->
+     
+    <bean id="eve-central-client" class="de.codesourcery.eve.skills.market.impl.EveCentralClient" />
+    
+    <bean id="evecentral-marketdata-provider" class="de.codesourcery.eve.skills.market.impl.EveCentralMarketDataProvider" >
+    	<property name="priceInfoStore"><ref local="priceinfo-store" /></property>
+    	<property name="systemClock" ref="system-clock" />
+    	<property name="eveCentralClient" ref="eve-central-client" />
+    </bean>
+    
+    <bean id="marketdata-provider" class="de.codesourcery.eve.skills.market.impl.DefaultMarketDataProvider">
+    	<property name="applicationConfigProvider"><ref local="appconfig-provider" /></property>
+    	<property name="wrappedProvider"><ref local="evecentral-marketdata-provider" /></property>
+    </bean>
+    
+    <bean id="priceinfo-store" class="de.codesourcery.eve.skills.market.impl.FilePriceInfoStore" >
+    	<constructor-arg><ref local="marketdata-provider" /></constructor-arg>
+    	<constructor-arg><ref local="system-clock" /></constructor-arg>
+    </bean>
+    
+    <bean id="dialog-manager" class="de.codesourcery.eve.skills.ui.utils.PersistentDialogManager" />
+    
+    <bean id="responseparser-invoker" class="de.codesourcery.eve.apiclient.utils.SwingEDTParserInvoker"/>
+    
+    <bean id="api-client" class="de.codesourcery.eve.apiclient.HttpAPIClient">
+    	<property name="cacheProvider">
+    		<ref local="api-cache-provider"/>
+    	</property>
+    	<property name="defaultRetrievalStrategy">
+    		<bean factory-bean="appconfig" factory-method="getClientRetrievalStrategy" />
+    	</property>
+    	<property name="staticDataModel">
+    		<ref bean="static-datamodel"/>
+    	</property>
+    	<!--  <property name="responseParserInvoker" ref="responseparser-invoker" /> -->
+    </bean>
+    
+    <!--  Application main class  -->
+   <bean id="main" class="de.codesourcery.eve.skills.ui.Main" scope="singleton">
+   	<property name="apiClient" ref="api-client" />
+   	<property  name="configProvider" ref="appconfig-provider" />
+   	<property name="threadManager" ref="thread-manager" />
+   	<property name="marketDataProvider" ref="marketdata-provider" />
+   	<property name="calendarReminder" ref="calendar-reminder" />
+   </bean>
+   
+   <!--  ========================= CORE STUFF ============================== -->
+   
+   <bean id="thread-manager" class="de.codesourcery.eve.skills.ui.utils.ApplicationThreadManager" />
+   
+   <bean id="static-datamodel" factory-bean="datamodel-provider" factory-method="getStaticDataModel" />
+   
+   <bean id="datamodel-provider" class="de.codesourcery.eve.skills.db.dao.DAOStaticDataModelProvider">
+   	 <property name="inventoryGroupDAO" ref="inventory-group-dao" />
+   	 <property name="inventoryTypeDAO" ref="inventory-type-dao" />
+   	 <property name="stationDAO" ref="station-dao" />
+   	 <property name="solarSystemDAO" ref="solarsystem-dao" />
+   	 <property name="skillTreeDAO" ref="skilltree-provider" />
+   	 <property name="factionDAO" ref="faction-dao" />
+   	 <property name="corporationDAO" ref="corporation-dao" />
+   	 <property name="blueprintTypeDAO" ref="blueprint-type-dao" />   	 
+   	 <property name="regionDAO" ref="region-dao" />
+   	 <property name="npcCorporationDAO" ref="npccorp-dao"></property>
+   	 <property name="assemblyLineDAO" ref="assemblyline-dao"></property>
+   	 <property name="inventoryCategoryDAO" ref="inventory-category-dao"></property>
+   	 <property name="marketGroupDAO" ref="marketgroup-dao"></property>
+   </bean>
+   
+      <!-- DAOs -->
+      
+    <!--  The list of all skills available in the game is currently NOT loaded via API  -->
+    <bean id="skilltree-provider" class="de.codesourcery.eve.skills.datamodel.DefaultSkillTreeProvider" >
+    	<constructor-arg><ref local="system-clock"/></constructor-arg>
+    </bean>
+    
+   <bean id="inventory-category-dao" class="de.codesourcery.eve.skills.dao.InventoryCategoryDAO" />
+    
+    <bean id="assemblyline-dao" class="de.codesourcery.eve.skills.db.dao.AssemblyLineDAO">
+       <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
+       <property name="transactionManager"><ref local="eve-transaction-manager"/></property>
+   </bean>
+    
+   <bean id="npccorp-dao" class="de.codesourcery.eve.skills.db.dao.NPCCorporationDAO">
+       <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
+       <property name="transactionManager"><ref local="eve-transaction-manager"/></property>
+   </bean>
+   
+   <bean id="marketgroup-dao" class="de.codesourcery.eve.skills.db.dao.MarketGroupDAO">
+       <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
+       <property name="transactionManager"><ref local="eve-transaction-manager"/></property>
+   </bean>   
+   
+   <bean id="station-dao" class="de.codesourcery.eve.skills.db.dao.StationDAO">
+       <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
+       <property name="transactionManager"><ref local="eve-transaction-manager"/></property>
+   </bean>   
+   
+   <bean id="solarsystem-dao" class="de.codesourcery.eve.skills.db.dao.SolarSystemDAO">
+       <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
+       <property name="transactionManager"><ref local="eve-transaction-manager"/></property>
+   </bean> 
+   
+   <bean id="inventory-type-dao" class="de.codesourcery.eve.skills.db.dao.InventoryTypeDAO">
+       <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
+       <property name="transactionManager"><ref local="eve-transaction-manager"/></property>       
+   </bean>
+   
+   <bean id="inventory-group-dao" class="de.codesourcery.eve.skills.db.dao.InventoryGroupDAO">
+       <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
+       <property name="transactionManager"><ref local="eve-transaction-manager"/></property>       
+   </bean>
+   
+   <bean id="region-dao" class="de.codesourcery.eve.skills.db.dao.RegionDAO">
+       <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
+       <property name="transactionManager"><ref local="eve-transaction-manager"/></property>       
+   </bean>
+   
+   <bean id="faction-dao" class="de.codesourcery.eve.skills.db.dao.FactionDAO">
+       <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
+       <property name="transactionManager"><ref local="eve-transaction-manager"/></property>       
+   </bean>
+   
+   <bean id="blueprint-type-dao" class="de.codesourcery.eve.skills.db.dao.BlueprintTypeDAO">
+       <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
+       <property name="transactionManager"><ref local="eve-transaction-manager"/></property>     
+       <property name="skillTreeDAO"><ref local="skilltree-provider"/></property>  
+   </bean>
+   
+   <bean id="corporation-dao" class="de.codesourcery.eve.skills.dao.APICorporationDAO">
+   	   <constructor-arg><ref local="api-client" /></constructor-arg>
+   	   <property name="cacheEnabled"><value>true</value></property>
+   </bean>   
+      
+  <!-- Transaction manager -->
+
+  <bean id="eve-transaction-manager" class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+    <property name="sessionFactory">
+      <ref bean="eveSessionFactory"/>
+    </property>
+  </bean>
+
+  <!-- Hibernate session factory for tables from the EVE online(tm) database dump -->
+   <bean id="eve-hsql-dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+
+     <property name="driverClass">
+        <value>org.h2.Driver</value>
+      </property>
+
+      <property name="jdbcUrl">
+        <value>jdbc:h2:/home/tgierke/workspace/eve-manager/ui/db_export/eve</value>
+         <!--   <value>jdbc:h2:db_export/eve</value> -->
+      </property>
+      
+      <property name="initialPoolSize" value="10" />
+
+   </bean>
+   
+  <!-- Hibernate session factory for tables from the EVE online(tm) database dump -->
+  <bean id="eveSessionFactory" class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean">
+   <property name="dataSource"><ref local="eve-hsql-dataSource"/></property>
+   <property name="hibernateProperties">
+     <props>
+       <prop key="show_sql">true</prop>
+       <prop key="format_sql">true</prop>
+       <prop key="hibernate.connection.shutdown">true</prop> 
+       <prop key="hibernate.dialect">org.hibernate.dialect.H2Dialect</prop>
+       <prop key="hibernate.hbm2ddl.auto">update</prop>
+     </props>
+   </property>
+
+   <property name="annotatedClasses">
+     <list>
+         <value>de.codesourcery.eve.skills.db.datamodel.InventoryGroup</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.InventoryType</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Station</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.SolarSystem</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Region</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Race</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Constellation</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.MarketGroup</value>         
+         <value>de.codesourcery.eve.skills.db.datamodel.Faction</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.BlueprintType</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.TypeActivityMaterials</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.InventoryMetaType</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.AssemblyLineType</value>            
+         <value>de.codesourcery.eve.skills.db.datamodel.AssemblyLine</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.EveName</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.NPCCorporation</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.TypeMaterial</value>         
+         <!-- currently broken
+         <value>de.codesourcery.eve.skills.db.datamodel.StationType</value>  
+         <value>de.codesourcery.eve.skills.db.datamodel.StationOperatonServices</value>
+         -->            
+     </list>
+   </property>
+ </bean>
+ 
+   <!-- Hibernate session factory for userdata DB -->
+   <bean id="userdata-hsql-dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+
+     <property name="driverClass">
+        <value>org.h2.Driver</value>
+      </property>
+
+      <property name="jdbcUrl">
+         <value>jdbc:h2:db_export/userdata</value>
+      </property>
+
+      <property name="initialPoolSize" value="10" />
+      <property name="maxPoolSize" value="30" />
+
+   </bean>
+   
+  <!-- Hibernate session factory for userdata tables -->
+  <bean id="userdataSessionFactory" class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean">
+   <property name="dataSource"><ref local="userdata-hsql-dataSource"/></property>
+   <property name="hibernateProperties">
+     <props>
+       <prop key="hibernate.connection.provider_class">org.hibernate.connection.C3P0ConnectionProvider</prop>
+       <prop key="show_sql">false</prop>
+       <prop key="format_sql">false</prop>
+       <prop key="hibernate.connection.shutdown">true</prop> 
+       <prop key="hibernate.dialect">org.hibernate.dialect.HSQLDialect</prop>
+       <prop key="hibernate.connection.hsqldb.default_table_type">cached</prop>
+       <prop key="hibernate.hbm2ddl.auto">update</prop>
+       <prop key="connection.hsqldb.default_table_type">cached</prop>
+     </props>
+   </property>
+
+   <property name="annotatedClasses">
+     <list>
+         <!--   <value>de.codesourcery.eve.skills.db.datamodel.TypeActivityMaterials</value> -->         
+     </list>
+   </property>
+ </bean>
+</beans>

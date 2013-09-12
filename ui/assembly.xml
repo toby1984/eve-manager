@@ -1,0 +1,89 @@
+<assembly>
+  <id>dist</id>
+  <formats>
+    <format>zip</format>
+  </formats>
+  <includeBaseDirectory>false</includeBaseDirectory>
+<!--
+  <moduleSets>
+  <moduleSet>
+        <includes>
+          <include>de.codesourcery.workflow:workflow-core</include>
+          <include>de.codesourcery.workflow:workflow-core-datamodel</include>
+          <include>de.codesourcery.workflow:workflow-dao</include>
+          <include>de.codesourcery.workflow:workflow-dao-jdbc</include>
+          <include>de.codesourcery.workflow:workflow-datamodel</include>
+          <include>de.codesourcery.workflow:workflow-stephandlers</include>
+          <include>de.codesourcery.workflow:workflow-tools</include>
+        </includes>
+        <binaries>
+	  <outputDirectory>lib</outputDirectory>
+	  <includeDependencies>true</includeDependencies>
+	  <unpack>false</unpack>
+        </binaries>
+  </moduleSet>
+  </moduleSets>
+-->
+
+  <fileSets>
+
+    <fileSet>
+      <directory>db_export</directory>
+      <outputDirectory>/db_export</outputDirectory>
+      <includes>
+          <include>**/eve*</include>
+      </includes>
+    </fileSet>
+
+    <fileSet>
+      <directory>logs</directory>
+      <outputDirectory>/logs</outputDirectory>
+      <includes>
+          <include>**/*</include>
+      </includes>
+    </fileSet>
+
+    <fileSet>
+      <directory>profile</directory>
+      <outputDirectory>/profile</outputDirectory>
+      <includes>
+          <include>**/*</include>
+      </includes>
+    </fileSet>
+
+    <fileSet>
+      <directory>conf</directory>
+      <outputDirectory>/conf</outputDirectory>
+      <includes>
+          <include>**/log4j.properties</include>
+      </includes>
+    </fileSet>
+
+    <fileSet>
+      <directory>cache</directory>
+      <outputDirectory>/cache</outputDirectory>
+      <includes>
+          <include>**/log4j.properties</include>
+      </includes>
+    </fileSet>
+
+    <fileSet>
+      <directory></directory>
+      <outputDirectory>/</outputDirectory>
+      <includes>
+          <include>run.sh</include>
+          <include>run.bat</include>
+      </includes>
+    </fileSet>
+
+  </fileSets>
+
+  <dependencySets>
+    <dependencySet>
+      <outputDirectory>/lib</outputDirectory>
+      <unpack>false</unpack>
+      <scope>runtime</scope>
+    </dependencySet>
+  </dependencySets>
+
+</assembly>

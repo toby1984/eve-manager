@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright 2004-2009 Tobias Gierke <tobias.gierke@code-sourcery.de>
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xmlns:aop="http://www.springframework.org/schema/aop"
+     xmlns:tx="http://www.springframework.org/schema/tx"
+     xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+     http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.5.xsd
+     http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
+  
+   <!-- Datasource -->
+
+   <bean id="mysql-dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+   
+      <property name="driverClass">
+         <value>org.gjt.mm.mysql.Driver</value>
+      </property>
+
+      <property name="jdbcUrl">
+         <value>jdbc:mysql://localhost/eve_150</value>
+      </property>
+
+      <property name="user">
+         <value>test</value>
+      </property>
+
+      <property name="password">
+         <value>test</value>
+      </property>
+      
+      <property name="initialPoolSize" value="10" />
+
+   </bean>
+
+   <bean id="hsql-dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+
+      <property name="driverClass">
+        <value>org.h2.Driver</value>
+      </property>
+
+      <property name="jdbcUrl">
+         <value>jdbc:h2:/home/tgierke/workspace/eve-manager/ui/db_export/eve</value>
+      </property>
+      
+      <property name="initialPoolSize" value="10" />
+
+   </bean>
+
+   
+  <!-- Transaction manager -->
+
+  <bean id="mysql-transaction-manager" class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+    <property name="sessionFactory">
+      <ref bean="mysql-sessionFactory"/>
+    </property>
+  </bean>
+
+  <!-- Hibernate session factory -->
+  <bean id="mysql-sessionFactory" class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean">
+   <property name="dataSource"><ref local="mysql-dataSource"/></property>
+   <property name="hibernateProperties">
+     <props>
+       <prop key="show_sql">true</prop>
+       <prop key="format_sql">true</prop>
+       <prop key="hibernate.dialect">org.hibernate.dialect.MySQL5InnoDBDialect</prop>
+       <prop key="hibernate.jdbc.batch_size">1000</prop>
+     </props>
+   </property>
+   
+   <property name="annotatedClasses">
+     <list>        
+         <value>de.codesourcery.eve.skills.db.datamodel.InventoryGroup</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.InventoryType</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Station</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.SolarSystem</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Region</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Race</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Constellation</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.MarketGroup</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Faction</value>    
+         <value>de.codesourcery.eve.skills.db.datamodel.BlueprintType</value>     
+         <value>de.codesourcery.eve.skills.db.datamodel.TypeActivityMaterials</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.InventoryMetaType</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.AssemblyLineType</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.AssemblyLine</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.EveName</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.NPCCorporation</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.StationType</value>   
+         <value>de.codesourcery.eve.skills.db.datamodel.StationOperatonServices</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.TypeMaterial</value>
+     </list>
+   </property>
+ </bean>   
+
+  <bean id="hsql-sessionFactory" class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean">
+   <property name="dataSource"><ref local="hsql-dataSource"/></property>
+   <property name="hibernateProperties">
+     <props>
+       <prop key="show_sql">true</prop>
+       <prop key="format_sql">true</prop>
+       <prop key="hibernate.connection.shutdown">true</prop> 
+       <prop key="hibernate.dialect">org.hibernate.dialect.H2Dialect</prop>
+       <prop key="hibernate.connection.hsqldb.default_table_type">cached</prop>
+       <prop key="connection.hsqldb.default_table_type">cached</prop>
+       <prop key="hibernate.hbm2ddl.auto">create</prop>
+       <prop key="hibernate.jdbc.batch_size">1000</prop>
+     </props>
+   </property>
+
+   <property name="annotatedClasses">
+     <list>
+         <value>de.codesourcery.eve.skills.db.datamodel.InventoryGroup</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.InventoryType</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Station</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.SolarSystem</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Region</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Race</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.Constellation</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.MarketGroup</value>         
+         <value>de.codesourcery.eve.skills.db.datamodel.Faction</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.BlueprintType</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.TypeActivityMaterials</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.InventoryMetaType</value>  
+         <value>de.codesourcery.eve.skills.db.datamodel.AssemblyLineType</value>  
+         <value>de.codesourcery.eve.skills.db.datamodel.AssemblyLine</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.EveName</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.NPCCorporation</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.TypeMaterial</value>
+         <!--  still broken
+         <value>de.codesourcery.eve.skills.db.datamodel.StationType</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.StationOperatonServices</value> 
+         -->    
+     </list>
+   </property>
+ </bean>
+
+</beans>

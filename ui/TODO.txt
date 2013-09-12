@@ -1,0 +1,50 @@
+BUGS:
+
+-> Remove IUserAccountStoreListener#aboutToBeXXX() methods ??
+   Nobody cares about those kind of things until it already happened
+
+- FileUserAccountStore does not extend InMemoryUserAccountStore !!
+ -> Listener notification is currently partially broken , newly added methods
+    IUSerAccountStoreListener#accountRemoved() / #characterRemoved()
+   are never called from this class
+
+   Subclass InMemoryUserAccountStore (add proper subclassing hooks before) 
+   and things should work automagically
+
+- Reverse refining is always off by a small amount (rounding issue ??)
+- Skill tree view clips level progress indicator on skills with short names/labels 
+- Training time calculation ignores progress
+as made on skill currently in training
+- using the "add/remove selected rows to import" from the popup context menu
+  in the "import market log" window doesn't update JTable properly 
+  (change to 'import?' flag is not rendered) 
+- Prices that were unobtainable from EVE-central are rendered as
+  'user-provided' with value 0.0
+
+TODO:
+
+- Exclude unused / unnecessary jars (mysql connector, JTA , jaxb etc.) in assembly.xml
+- Blueprint browser: Add warning that production cost is 
+  only based on raw material prices and does not factor in
+ 
+   - invention costs
+   - copying costs
+   - installation costs
+
+- Make skill tree view highlight the currently trained skill
+- Make sure all components use AbstractComponent#displayStatusMessage(String)
+  before performing long running tasks
+- Make sure all components use AbstractComponent#displayStatusMessage(String)
+  to inform the user about any (potentially) long-running tasks.
+- Market price UI is somewhat crude, fix resizing of text area
+
+FEATURES:
+
+- Skill tree should highlight and properly render the skill
+  the selected character is currently training
+- Add (automated?) price comparison by region
+- Add finance reporting / cash-flow charts
+
+OTHER:
+
+- remove excessive logging when storing / updating PriceInfo , especially from tight loops

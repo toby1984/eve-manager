@@ -1,0 +1,14 @@
+<document>
+  <properties>
+    <title>Eve Skills</title>
+    <author email="tobias.gierke@code-sourcery.de">Tobias Gierke</author>
+  </properties>
+  <body>
+
+    <release version="1.0.0" date="NOT YET RELEASED" description="First public release.">
+      <action dev="tgierke" type="update">
+        First public release. 
+      </action>              
+    </release>
+  </body>
+</document>

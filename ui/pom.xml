@@ -1,0 +1,194 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <!--
+Copyright 2004 Tobias Gierke <tobias.gierke@code-sourcery.de>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+  <parent>
+    <groupId>de.codesourcery</groupId>
+    <artifactId>eve-skills-meta</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+  </parent>
+
+  <modelVersion>4.0.0</modelVersion>
+  <name>eve-skills-ui</name>
+  <groupId>de.codesourcery</groupId>
+  <artifactId>codesourcery-eve-ui</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+  <description>Framework classes for handling skill plans for EVE Online(tm)</description>
+
+  <!-- Distribution -->
+  <dependencies>
+
+    <dependency>
+      <groupId>org.swinglabs</groupId>
+      <artifactId>swingx</artifactId>
+      <version>0.9.5-2</version>
+    </dependency> 
+
+    <!--
+      Note: This artifact is NOT publicly available in maven repositories.
+
+      I created this one may unpacking all JARs provided with JFreeChart 1.0.13
+      *EXCEPT* the ones that either 
+  
+      - conflict with JDK1.6 build-in classes
+      - belong to the SWT stuff (which I don't use)
+      - are available as separate maven artifacts (servlet.jar)
+    -->
+   <dependency>
+	<groupId>jfree</groupId>
+	<artifactId>jfreechart</artifactId>
+	<version>1.0.13</version>
+    </dependency>
+
+    <dependency>
+	<groupId>jfree</groupId>
+	<artifactId>jcommon</artifactId>
+	<version>1.0.16</version>
+    </dependency>
+
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>de.codesourcery</groupId>
+      <artifactId>codesourcery-planning</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>de.codesourcery</groupId>
+      <artifactId>codesourcery-eve-apiclient</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>de.codesourcery</groupId>
+      <artifactId>codesourcery-eve-db-datamodel</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>de.codesourcery</groupId>
+      <artifactId>codesourcery-eve-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>commons-lang</groupId>
+      <artifactId>commons-lang</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.easymock</groupId>
+      <artifactId>easymockclassextension</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Spring dependencies -->
+
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring</artifactId>
+    </dependency>
+
+    <!-- Start JPA and hibernate stuff -->
+
+    <dependency>
+      <groupId>org.hibernate</groupId>
+      <artifactId>hibernate</artifactId>
+      <version>3.2.1.ga</version>
+    </dependency>
+
+    <dependency>
+      <groupId>javax.persistence</groupId>
+      <artifactId>persistence-api</artifactId>
+      <version>1.0</version>
+    </dependency>
+
+    <!-- End JPA and hibernate stuff -->
+
+  </dependencies>
+  <!-- Build -->
+  <build>
+
+    <resources>
+
+      <resource>
+        <directory>${basedir}</directory>
+        <filtering>false</filtering>
+        <includes>
+          <include>LICENSE.txt</include>
+        </includes>
+      </resource>
+
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>false</filtering>
+        <includes>
+          <include>**/spring-eve-skills-ui.xml</include>
+        </includes>
+      </resource>
+    </resources>
+    <!-- Plugins -->
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <configuration>
+          <mainClass>de.codesourcery.eve.skills.ui.Main</mainClass>
+        </configuration>
+      </plugin>
+      <plugin>
+           <groupId>org.apache.maven.plugins</groupId>
+           <artifactId>maven-assembly-plugin</artifactId>
+           <version>2.2-beta-2</version> 
+           <executions>
+             <execution>
+               <phase>package</phase>
+               <goals>
+                 <goal>assembly</goal>
+               </goals>
+             </execution>
+           </executions>
+           <configuration>
+             <descriptors>
+                <descriptor>assembly.xml</descriptor>
+             </descriptors>
+             <outputDirectory>./</outputDirectory>
+             <finalName>eve-skills</finalName>
+           </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.mycila</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+        <configuration>
+          <header>${basedir}/etc/license_header.txt</header>
+          <quiet>false</quiet>
+          <failIfMissing>true</failIfMissing>
+          <basedir>${basedir}/src</basedir>
+          <excludes>
+            <exclude>changes/changes.xml</exclude>
+          </excludes>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

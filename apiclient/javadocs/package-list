@@ -1,0 +1,4 @@
+de.codesourcery.eve.apiclient
+de.codesourcery.eve.apiclient.datamodel
+de.codesourcery.eve.apiclient.exceptions
+de.codesourcery.eve.apiclient.parsers
