@@ -38,9 +38,9 @@ import de.codesourcery.eve.apiclient.exceptions.APIUnavailableException;
 import de.codesourcery.eve.apiclient.parsers.AssetListParser;
 import de.codesourcery.eve.apiclient.parsers.CharacterIndustryJobsParser;
 import de.codesourcery.eve.apiclient.parsers.CharacterSheetParser;
-import de.codesourcery.eve.apiclient.parsers.CharacterStandingsParser;
+import de.codesourcery.eve.apiclient.parsers.NPCCorpCharacterStandingParser;
 import de.codesourcery.eve.apiclient.parsers.ConquerableStationsParser;
-import de.codesourcery.eve.apiclient.parsers.CorpStandingParser;
+import de.codesourcery.eve.apiclient.parsers.FactionStandingParser;
 import de.codesourcery.eve.apiclient.parsers.GetAvailableCharactersParser;
 import de.codesourcery.eve.apiclient.parsers.MarketOrderParser;
 import de.codesourcery.eve.apiclient.parsers.ResolveNamesParser;
@@ -53,8 +53,8 @@ import de.codesourcery.eve.apiclient.parsers.WalletTransactionsParser;
 import de.codesourcery.eve.apiclient.parsers.ConquerableStationsParser.Outpost;
 import de.codesourcery.eve.skills.datamodel.AssetList;
 import de.codesourcery.eve.skills.datamodel.CharacterID;
-import de.codesourcery.eve.skills.datamodel.CharacterStandings;
-import de.codesourcery.eve.skills.datamodel.CorpStandings;
+import de.codesourcery.eve.skills.datamodel.NPCCorpStandings;
+import de.codesourcery.eve.skills.datamodel.FactionStandings;
 import de.codesourcery.eve.skills.datamodel.IBaseCharacter;
 import de.codesourcery.eve.skills.datamodel.ICharacter;
 import de.codesourcery.eve.skills.datamodel.IndustryJob;
@@ -269,7 +269,7 @@ public class HttpAPIClient extends AbstractHttpAPIClient
     }
 
     @Override
-    public APIResponse<CorpStandings> getCorpStandings(ICharacter character,
+    public APIResponse<FactionStandings> getFactionStandings(ICharacter character,
             ICredentialsProvider credentialsProvider, RequestOptions options)
             throws APIUnavailableException, APIErrorException
     {
@@ -280,15 +280,8 @@ public class HttpAPIClient extends AbstractHttpAPIClient
                     "This method requires a DAO provider to be set" );
         }
 
-        final Corporation corp = character.getCharacterDetails().getCorporation();
-
-        if ( corp == null )
-        {
-            throw new IllegalArgumentException( "Character has NULL corp ?" );
-        }
-
-        final CorpStandingParser parser =
-                new CorpStandingParser( corp, getStaticDataModel(), getSystemClock() );
+        final FactionStandingParser parser =
+                new FactionStandingParser( character , getStaticDataModel(), getSystemClock() );
 
         final Map<String, Object> params = new HashMap<String, Object>();
 
@@ -300,7 +293,7 @@ public class HttpAPIClient extends AbstractHttpAPIClient
                     KeyRole.FULL_ACCESS, // limited API key required
                     options );
 
-        return new APIResponse<CorpStandings>( response, parser.getResult(),
+        return new APIResponse<FactionStandings>( response, parser.getResult(),
                 getSystemClock() );
     }
 
@@ -475,7 +468,7 @@ public class HttpAPIClient extends AbstractHttpAPIClient
     }
 
     @Override
-    public APIResponse<CharacterStandings> getCharacterStandings(ICharacter character,
+    public APIResponse<NPCCorpStandings> getNPCCorpCharacterStandings(ICharacter character,
             ICredentialsProvider credentialsProvider, RequestOptions options)
             throws APIUnavailableException, APIErrorException
     {
@@ -486,8 +479,8 @@ public class HttpAPIClient extends AbstractHttpAPIClient
                     "This method requires a DAO provider to be set" );
         }
 
-        final CharacterStandingsParser parser =
-                new CharacterStandingsParser( character, getStaticDataModel(),
+        final NPCCorpCharacterStandingParser parser =
+                new NPCCorpCharacterStandingParser( character, getStaticDataModel(),
                         getSystemClock() );
 
         final Map<String, Object> params = new HashMap<String, Object>();
@@ -500,7 +493,7 @@ public class HttpAPIClient extends AbstractHttpAPIClient
                     KeyRole.LIMITED_ACCESS, // limited API key required
                     options );
 
-        return new APIResponse<CharacterStandings>( response, parser.getResult(),
+        return new APIResponse<NPCCorpStandings>( response, parser.getResult(),
                 getSystemClock() );
 
     }

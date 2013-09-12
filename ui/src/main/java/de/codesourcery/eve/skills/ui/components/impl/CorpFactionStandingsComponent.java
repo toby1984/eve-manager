@@ -30,7 +30,7 @@ import de.codesourcery.eve.apiclient.IAPIClient;
 import de.codesourcery.eve.apiclient.datamodel.APIResponse;
 import de.codesourcery.eve.apiclient.datamodel.RequestOptions;
 import de.codesourcery.eve.skills.accountdata.IUserAccountStore;
-import de.codesourcery.eve.skills.datamodel.CorpStandings;
+import de.codesourcery.eve.skills.datamodel.FactionStandings;
 import de.codesourcery.eve.skills.datamodel.ICharacter;
 import de.codesourcery.eve.skills.datamodel.UserAccount;
 import de.codesourcery.eve.skills.db.datamodel.Faction;
@@ -104,7 +104,7 @@ public class CorpFactionStandingsComponent extends AbstractComponent implements 
 
 		submitTask( "faction_standings", new UITask() {
 
-			private volatile APIResponse<CorpStandings> corpStandings;
+			private volatile APIResponse<FactionStandings> factionStandings;
 
 			@Override
 			public void run() throws Exception {
@@ -114,7 +114,7 @@ public class CorpFactionStandingsComponent extends AbstractComponent implements 
 				final UserAccount account =
 					accountStore.getAccountByCharacterID( character.getCharacterId() );
 
-				corpStandings = apiClient.getCorpStandings( 
+				factionStandings = apiClient.getFactionStandings( 
 						character ,
 						account ,
 						RequestOptions.DEFAULT );
@@ -129,7 +129,7 @@ public class CorpFactionStandingsComponent extends AbstractComponent implements 
 			@Override
 			public void successHook() throws Exception
 			{
-				tableModel.refresh( corpStandings.getPayload().getFactionStandings() );
+				tableModel.refresh( factionStandings.getPayload().getFactionStandings() );
 			}
 
 			@Override

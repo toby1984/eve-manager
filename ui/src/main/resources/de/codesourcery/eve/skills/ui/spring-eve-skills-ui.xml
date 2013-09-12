@@ -245,7 +245,7 @@
       </property>
 
       <property name="jdbcUrl">
-        <value>jdbc:h2:/home/tgierke/workspace/eve-manager/ui/db_export/eve</value>
+        <value>jdbc:h2:/home/tobi/workspace/eve-manager/ui/db_export/eve</value>
          <!--   <value>jdbc:h2:db_export/eve</value> -->
       </property>
       

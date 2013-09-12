@@ -20,56 +20,30 @@ import static org.easymock.classextension.EasyMock.*;
 
 import java.util.Date;
 
-import de.codesourcery.eve.skills.datamodel.CorpStandings;
 import de.codesourcery.eve.skills.datamodel.CorporationId;
+import de.codesourcery.eve.skills.datamodel.FactionStandings;
+import de.codesourcery.eve.skills.datamodel.ICharacter;
 import de.codesourcery.eve.skills.datamodel.IStaticDataModel;
 import de.codesourcery.eve.skills.db.datamodel.Corporation;
 import de.codesourcery.eve.skills.db.datamodel.Faction;
 
 public class CorpStandingParserTest extends AbstractParserTest {
 
-	public static final String XML = "<?xml version='1.0' encoding='UTF-8'?>\n" + 
-			"<eveapi version=\"2\">\n" + 
-			"  <currentTime>2008-09-02 18:08:40</currentTime>\n" + 
+	public static final String XML = "<?xml version='1.0' encoding='UTF-8'?>\n<eveapi version=\"2\">\n" + 
+			"  <currentTime>2013-09-12 14:52:13</currentTime>\n" + 
 			"  <result>\n" + 
-			"    <corporationStandings>\n" + 
-			"      <standingsTo>\n" + 
-			"        <rowset name=\"characters\" key=\"toID\" columns=\"toID,toName,standing\">\n" + 
-			"        </rowset>\n" + 
-			"        <rowset name=\"corporations\" key=\"toID\" columns=\"toID,toName,standing\">\n" + 
-			"        </rowset>\n" + 
-			"        <rowset name=\"alliances\" key=\"toID\" columns=\"toID,toName,standing\">\n" + 
-			"        </rowset>\n" + 
-			"      </standingsTo>\n" + 
-			"      <standingsFrom>\n" + 
-			"        <rowset name=\"agents\" key=\"fromID\" columns=\"fromID,fromName,standing\">\n" + 
-			"        </rowset>\n" + 
-			"        <rowset name=\"NPCCorporations\" key=\"fromID\" columns=\"fromID,fromName,standing\">\n" + 
-			"        </rowset>\n" + 
-			"        <rowset name=\"factions\" key=\"fromID\" columns=\"fromID,fromName,standing\">\n" +
-			"           <row fromID=\"1\" fromName=\"faction 1\" standing=\"1.0\" />\n"+
-			"           <row fromID=\"2\" fromName=\"faction 2\" standing=\"3.0\" />\n"+			
-			"        </rowset>\n" + 
-			"      </standingsFrom>\n" + 
-			"    </corporationStandings>\n" + 
-			"    <allianceStandings>\n" + 
-			"      <standingsTo>\n" + 
-			"        <rowset name=\"corporations\" key=\"toID\" columns=\"toID,toName,standing\">\n" + 
-			"        </rowset>\n" + 
-			"        <rowset name=\"alliances\" key=\"toID\" columns=\"toID,toName,standing\">\n" + 
-			"        </rowset>\n" + 
-			"      </standingsTo>\n" + 
-			"    </allianceStandings>\n" + 
+			"    <characterNPCStandings>\n" + 
+			"      <rowset name=\"factions\" key=\"fromID\" columns=\"fromID,fromName,standing\">\n" + 
+			"        <row fromID=\"1\" fromName=\"faction 1\" standing=\"1.5\" />\n" + 
+			"        <row fromID=\"2\" fromName=\"faction 2\" standing=\"2.5\" />\n" + 
+			"      </rowset>\n" + 
+			"    </characterNPCStandings>\n" + 
 			"  </result>\n" + 
-			"  <cachedUntil>2008-09-02 21:08:41</cachedUntil>\n" + 
-			"</eveapi>";
+			"  <cachedUntil>2013-09-12 17:49:13</cachedUntil>\n" + 
+			"</eveapi>"; 
 	
 	public void testParse() {
 	
-		final Corporation corp = new Corporation();
-		corp.setId( new CorporationId( 1 ) );
-		corp.setName("my corp" );
-
 		final IStaticDataModel factionDAO =
 			createMock( IStaticDataModel.class );
 		
@@ -85,14 +59,17 @@ public class CorpStandingParserTest extends AbstractParserTest {
 		expect( factionDAO.getFaction( new Long(2) ) ).andReturn( faction2 ).once();
 		replay( factionDAO );
 		
-		final CorpStandingParser parser =
-			new CorpStandingParser(corp , factionDAO , systemClock() );
+		final ICharacter character = new de.codesourcery.eve.skills.datamodel.Character("test");
+		
+		final FactionStandingParser parser = new FactionStandingParser(character , factionDAO , systemClock() );
 
 		parser.parse(new Date() , XML );
-		CorpStandings standings = parser.getResult();
+		FactionStandings standings = parser.getResult();
 		
 		assertNotNull( standings );
-		assertEquals( corp , standings.getCorporation() );
+		assertSame( character , standings.getCharacter() );
+		assertEquals( 1.5f , standings.getFactionStanding( faction1 ).getValue() );
+		assertEquals( 2.5f , standings.getFactionStanding( faction2 ).getValue() );
 		
 		verify( factionDAO );
 	}

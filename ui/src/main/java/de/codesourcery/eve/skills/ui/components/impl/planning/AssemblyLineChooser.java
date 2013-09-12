@@ -41,7 +41,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 
 import org.apache.log4j.Logger;
 
-import de.codesourcery.eve.skills.datamodel.CharacterStandings;
+import de.codesourcery.eve.skills.datamodel.NPCCorpStandings;
 import de.codesourcery.eve.skills.datamodel.IStaticDataModel;
 import de.codesourcery.eve.skills.datamodel.Standing;
 import de.codesourcery.eve.skills.db.datamodel.Activity;
@@ -80,7 +80,7 @@ public class AssemblyLineChooser extends AbstractEditorComponent
 	private static final DecimalFormat PERCENT_FORMAT2 =
 		new DecimalFormat("##0.##");
 	
-	private final CharacterStandings characterStandings;
+	private final NPCCorpStandings characterStandings;
 
 	private final JComboBox activity = new JComboBox(new DefaultComboBoxModel<Activity>( getFilteredActivities() ) );
 	private final JComboBox region = new JComboBox();
@@ -254,7 +254,7 @@ public class AssemblyLineChooser extends AbstractEditorComponent
 
 	}
 
-	public AssemblyLineChooser(CharacterStandings standings) {
+	public AssemblyLineChooser(NPCCorpStandings standings) {
 		if ( standings == null ) {
 			throw new IllegalArgumentException("character standings cannot be NULL");
 		}

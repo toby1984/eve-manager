@@ -32,7 +32,7 @@ import de.codesourcery.eve.apiclient.IAPIClient;
 import de.codesourcery.eve.apiclient.datamodel.APIResponse;
 import de.codesourcery.eve.apiclient.datamodel.RequestOptions;
 import de.codesourcery.eve.skills.accountdata.IUserAccountStore;
-import de.codesourcery.eve.skills.datamodel.CharacterStandings;
+import de.codesourcery.eve.skills.datamodel.NPCCorpStandings;
 import de.codesourcery.eve.skills.datamodel.ICharacter;
 import de.codesourcery.eve.skills.datamodel.Standing;
 import de.codesourcery.eve.skills.db.datamodel.NPCCorporation;
@@ -123,7 +123,7 @@ public class CharacterStandingsComponent extends AbstractComponent implements IC
 				
 				submitTask( new UITask() {
 
-					private APIResponse<CharacterStandings> characterStandings;
+					private APIResponse<NPCCorpStandings> characterStandings;
 					
 					@Override
 					public String getId()
@@ -162,9 +162,9 @@ public class CharacterStandingsComponent extends AbstractComponent implements IC
 		
 	};
 
-	protected APIResponse<CharacterStandings> queryCharacterStandings(ICharacter c) 
+	protected APIResponse<NPCCorpStandings> queryCharacterStandings(ICharacter c) 
 	{
-		return apiClient.getCharacterStandings( c ,
+		return apiClient.getNPCCorpCharacterStandings( c ,
 				userAccountStore.getAccountByCharacterID( c.getCharacterId() ),
 				RequestOptions.DEFAULT );
 	}

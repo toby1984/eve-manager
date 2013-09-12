@@ -53,7 +53,7 @@ import org.apache.commons.lang.StringUtils;
 import de.codesourcery.eve.apiclient.IAPIClient;
 import de.codesourcery.eve.apiclient.datamodel.RequestOptions;
 import de.codesourcery.eve.skills.accountdata.IUserAccountStore;
-import de.codesourcery.eve.skills.datamodel.CharacterStandings;
+import de.codesourcery.eve.skills.datamodel.NPCCorpStandings;
 import de.codesourcery.eve.skills.datamodel.ICharacter;
 import de.codesourcery.eve.skills.datamodel.IStaticDataModel;
 import de.codesourcery.eve.skills.datamodel.ItemWithQuantity;
@@ -592,13 +592,13 @@ public class RefiningComponent extends AbstractRefiningComponent
 
 				private List<RefiningResults> results;
 				private float stationOwnerStanding=0.0f;
-				private CharacterStandings charStandings;
+				private NPCCorpStandings charStandings;
 
 				@Override
 				public void run() throws Exception
 				{
 					
-					charStandings = apiClient.getCharacterStandings( c ,
+					charStandings = apiClient.getNPCCorpCharacterStandings( c ,
 							userAccountStore.getAccountByCharacterID( c.getCharacterId() ) , 
 							RequestOptions.DEFAULT ).getPayload();
 				}

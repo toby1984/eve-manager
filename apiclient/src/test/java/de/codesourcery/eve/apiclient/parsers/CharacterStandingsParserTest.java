@@ -20,7 +20,7 @@ import static org.easymock.classextension.EasyMock.*;
 
 import java.util.Date;
 
-import de.codesourcery.eve.skills.datamodel.CharacterStandings;
+import de.codesourcery.eve.skills.datamodel.NPCCorpStandings;
 import de.codesourcery.eve.skills.datamodel.ICharacter;
 import de.codesourcery.eve.skills.datamodel.IStaticDataModel;
 import de.codesourcery.eve.skills.datamodel.Standing;

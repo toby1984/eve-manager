@@ -28,7 +28,7 @@ import javax.swing.JTextField;
 import de.codesourcery.eve.apiclient.IAPIClient;
 import de.codesourcery.eve.apiclient.datamodel.RequestOptions;
 import de.codesourcery.eve.skills.accountdata.IUserAccountStore;
-import de.codesourcery.eve.skills.datamodel.CharacterStandings;
+import de.codesourcery.eve.skills.datamodel.NPCCorpStandings;
 import de.codesourcery.eve.skills.datamodel.ICharacter;
 import de.codesourcery.eve.skills.datamodel.IStaticDataModel;
 import de.codesourcery.eve.skills.datamodel.Standing;
@@ -143,8 +143,8 @@ public abstract class AbstractRefiningComponent extends AbstractComponent
 		
 		if ( standings == null || ! standings.station.getID().equals( currentStation.getID() ) ) 
 		{
-			final CharacterStandings charStandings=
-				apiClient.getCharacterStandings(
+			final NPCCorpStandings charStandings=
+				apiClient.getNPCCorpCharacterStandings(
 						currentCharacter , 
 						userAccountStore.getAccountByCharacterID( currentCharacter.getCharacterId() ),
 						RequestOptions.DEFAULT ).getPayload();
@@ -164,8 +164,8 @@ public abstract class AbstractRefiningComponent extends AbstractComponent
 	
 	protected Station queryStation() {
 		
-		final CharacterStandings standings=
-			apiClient.getCharacterStandings(
+		final NPCCorpStandings standings=
+			apiClient.getNPCCorpCharacterStandings(
 					selectedCharacter , 
 					userAccountStore.getAccountByCharacterID( selectedCharacter.getCharacterId() ),
 					RequestOptions.DEFAULT ).getPayload();

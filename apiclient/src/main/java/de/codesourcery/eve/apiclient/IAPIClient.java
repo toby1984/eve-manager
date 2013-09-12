@@ -37,8 +37,8 @@ import de.codesourcery.eve.apiclient.parsers.ConquerableStationsParser.Outpost;
 import de.codesourcery.eve.apiclient.utils.SwingEDTParserInvoker;
 import de.codesourcery.eve.skills.datamodel.AssetList;
 import de.codesourcery.eve.skills.datamodel.CharacterID;
-import de.codesourcery.eve.skills.datamodel.CharacterStandings;
-import de.codesourcery.eve.skills.datamodel.CorpStandings;
+import de.codesourcery.eve.skills.datamodel.NPCCorpStandings;
+import de.codesourcery.eve.skills.datamodel.FactionStandings;
 import de.codesourcery.eve.skills.datamodel.IBaseCharacter;
 import de.codesourcery.eve.skills.datamodel.ICharacter;
 import de.codesourcery.eve.skills.datamodel.IStaticDataModel;
@@ -274,7 +274,7 @@ public interface IAPIClient
      * @throws IOException
      * @see {@link #setStaticDataModel(IDAOProvider)}
      */
-    public APIResponse<CorpStandings> getCorpStandings(ICharacter character,
+    public APIResponse<FactionStandings> getFactionStandings(ICharacter character,
             ICredentialsProvider credentialsProvider, RequestOptions options)
             throws APIUnavailableException, APIErrorException;
 
@@ -290,7 +290,7 @@ public interface IAPIClient
      * @throws IOException
      * @see {@link #setStaticDataModel(IDAOProvider)}
      */
-    public APIResponse<CharacterStandings> getCharacterStandings(ICharacter character,
+    public APIResponse<NPCCorpStandings> getNPCCorpCharacterStandings(ICharacter character,
             ICredentialsProvider credentialsProvider, RequestOptions options)
             throws APIUnavailableException, APIErrorException;
 
