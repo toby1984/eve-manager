@@ -77,16 +77,10 @@ public class Attributes {
 		// base value
 		float baseValue = character.getAttributes().getBaseValue( attribute );
 		
-		// final int learningSkillLevel = learningSkill.getLevel();		
-		final int learningSkillLevel = 5; // Learning skills were removed completely with Incursion and all characters received +17 attribute points (=all learning skills to lvl 5)
-		final float factor = 1 + ( learningSkillLevel * 2.0f) / 100.0f;
-		
 		// implant modifier
 		final float implants  = character.getImplantSet().getAttributeModifier( attribute );
 		
-		// learning skills
-		final float result = ( baseValue + implants ) * factor;
-		return result;
+		return ( baseValue + implants );
 	}
 	
 	/**
