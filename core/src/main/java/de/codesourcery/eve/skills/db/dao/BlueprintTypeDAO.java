@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.Hibernate;
 import org.hibernate.Query;
@@ -90,7 +91,7 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 		return result;
 	}
 
-	protected List<TypeActivityMaterials> fetchRequirements(final Activity activity , final BlueprintType blueprint) 
+	protected MaterialRequirements fetchRequirements(final Activity activity , final BlueprintType blueprint) 
 	{
 		if ( activity == null ) {
 			throw new IllegalArgumentException("activity cannot be NULL");
@@ -105,7 +106,7 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 			throw new RuntimeException("Unsupported activity "+activity+" - use fetchRefiningMaterials() instead");
 		}
 
-		final InventoryType item = blueprint.getBlueprintType();		
+		final InventoryType bluePrintType = blueprint.getBlueprintType();		
 
 		/*
 		 * note: TypeActivityMaterials belongs to a database view that has been removed
@@ -121,23 +122,23 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 		 * subject to manufacturing waste as well as all skill requirements etc.
 		 */
 
-		// fetch special requirements first
-		final List<TypeActivityMaterials> specialMaterials = execute( new HibernateCallback<List<TypeActivityMaterials>>() {
+		// fetch extra/special requirements first
+		final List<TypeActivityMaterials> extraMaterials = execute( new HibernateCallback<List<TypeActivityMaterials>>() {
 
 			@SuppressWarnings("unchecked")
 			@Override
 			public List<TypeActivityMaterials> doInSession(Session session) {
 				final Query query = 
-					session.createQuery("from TypeActivityMaterials " +
+					session.createQuery("from TypeActivityMaterials " + // SELECT ... FROM ramTypeRequirements
 					"where typeID = :type and activityID = :activity");
 
-				query.setParameter("type" , item );
+				query.setParameter("type" , bluePrintType );
 				query.setParameter("activity" , 
 						activity ,
 						Hibernate.custom( ActivityUserType.class ) );
 				return (List<TypeActivityMaterials>) query.list();					
 			}
-		} );
+		});
 
 		/* Add stuff from "simple materials" table
 		 * only if we're trying to manufacture a T1 item.
@@ -148,18 +149,55 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 		 * they will yield the mats used for production 
 		 * of the corresponding T1 items which is WRONG.
 		 */
-
+		List<TypeActivityMaterials> simpleRequirements=new ArrayList<>();
 		if ( activity == Activity.MANUFACTURING ) 
 		{
-			specialMaterials.addAll( getSimpleRequirements( blueprint , specialMaterials) );
+			simpleRequirements = getSimpleRequirements( blueprint , extraMaterials);
+		}
+		return new MaterialRequirements( simpleRequirements , extraMaterials );
+	}
+	
+	protected static final class MaterialRequirements implements Iterable<TypeActivityMaterials>
+	{
+		public final List<TypeActivityMaterials> rawMats;
+		public final List<TypeActivityMaterials> extraMats;
+		
+		public MaterialRequirements(List<TypeActivityMaterials> simpleMats,List<TypeActivityMaterials> extraMats) 
+		{
+			this.rawMats = simpleMats;
+			this.extraMats = extraMats;
+		}
+		
+		public boolean isSimpleMaterial(TypeActivityMaterials mat ) {
+			return contains( rawMats , mat );
+		}
+		
+		public boolean isExtraMaterial(TypeActivityMaterials mat ) 
+		{
+			return contains( extraMats , mat );
+		}	
+		
+		private static boolean contains(List<TypeActivityMaterials> list,TypeActivityMaterials mat) 
+		{
+			for ( TypeActivityMaterials candidate : list ) {
+				if ( candidate.getRequiredType().equals( mat.getRequiredType() ) && mat.getActivity().equals( candidate.getActivity() ) ) {
+					return true;
+				}
+			}
+			return false;			
 		}
 
-		return specialMaterials;
+		@Override
+		public Iterator<TypeActivityMaterials> iterator() 
+		{
+			final List<TypeActivityMaterials> all = new ArrayList<>( this.rawMats );
+			all.addAll( extraMats );
+			return all.iterator();
+		}
 	}
 
-	private List<TypeActivityMaterials> getSimpleRequirements(BlueprintType blueprint,
-			List<TypeActivityMaterials> specialMaterials) 
-			{
+	private List<TypeActivityMaterials> getSimpleRequirements(BlueprintType blueprint,List<TypeActivityMaterials> extraMaterials) 
+	{
 		/*
 		 * While Jercy's method looks fine to me for T1 manufacturing, it seems
 		 * to be slightly more complicated for T2.
@@ -185,26 +223,25 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 		 * So it looks like we actually need three elements to make up the full
 		 * manufacturing requirement:
 		 * 
-		 * (1) Records from ramTypeRequirements for activityID=1,typeID=blueprintTypeID 		 
-		 * (2) Records from invTypeMaterials for typeID=productTypeID 
-		 * (3) Records from invTypeMaterials for typeID=requiredTypeID from (2) where recycle=1
+		 * Step (1): Records from ramTypeRequirements for activityID=1,typeID=blueprintTypeID 		 
+		 * Step (2): Records from invTypeMaterials for typeID=productTypeID 
+		 * Step (3): Records from invTypeMaterials for typeID=requiredTypeID from (2) where recycle=1
 		 * 
 		 * ( (2)-(3) )*wasteFactor then becomes your Raw Materials 
 		 * (1) becomes your Extra Materials and Skills (differentiated by the categoryID of the requiredTypeID)
 		 */
 
-		final Map<InventoryType , TypeActivityMaterials> allMaterials =
-			new HashMap<InventoryType , TypeActivityMaterials>();
+		final Map<InventoryType , TypeActivityMaterials> allMaterials = new HashMap<>();
 
-		final List<ItemWithQuantity> simpleMaterials = 
-			fetchRefiningMaterials( blueprint.getProductType() );
+		// step (2)
+		final List<ItemWithQuantity> simpleMaterials = fetchRefiningMaterials( blueprint.getProductType() );
 
 		for ( ItemWithQuantity mat : simpleMaterials ) 
 		{
 			final TypeActivityMaterials simpleMaterial = toTypeActivityMaterial(blueprint,mat);
 
 			// all materials from this table
-			// are subject to manufacturing waste
+			// are subject to manufacturing waste (BPM waste,skill waste and station standings waste)
 			simpleMaterial.setSubjectToManufacturingWaste( true );
 
 			allMaterials.put( simpleMaterial.getRequiredType() , simpleMaterial );
@@ -215,19 +252,16 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 		// need to subtract the materials required for
 		// producing any recycleable 'special' materials of the item
 
-		for ( TypeActivityMaterials specialMaterial : specialMaterials ) 
+		for ( TypeActivityMaterials specialMaterial : extraMaterials ) 
 		{
 			if ( ! specialMaterial.isRecycle() ) {
 				continue;
 			}
 
-			final List<ItemWithQuantity>  t1Parts = 
-				fetchRefiningMaterials( specialMaterial.getRequiredType() );
-
+			final List<ItemWithQuantity>  t1Parts = fetchRefiningMaterials( specialMaterial.getRequiredType() );
 			for ( ItemWithQuantity mat : t1Parts ) 
 			{
-				final TypeActivityMaterials existing =
-					allMaterials.get( mat.getType() );
+				final TypeActivityMaterials existing = allMaterials.get( mat.getType() );
 
 				if ( existing != null )
 				{
@@ -237,17 +271,16 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 		}
 
 		// remove everything with a negative quantity here
-		final Iterator<Map.Entry<InventoryType , TypeActivityMaterials>> it =
-			allMaterials.entrySet().iterator();
+		final Iterator<Map.Entry<InventoryType , TypeActivityMaterials>> it = allMaterials.entrySet().iterator();
 
-		while( it.hasNext() ) {
+		while( it.hasNext() ) 
+		{
 			final TypeActivityMaterials mat = it.next().getValue();
 			if ( mat.getQuantity() <= 0 ) {
 				it.remove();
 			}
 		}
-
-		return new ArrayList<TypeActivityMaterials>( allMaterials.values() );
+		return new ArrayList<>( allMaterials.values() );
 	}
 
 	private TypeActivityMaterials toTypeActivityMaterial(BlueprintType blueprint,
@@ -273,9 +306,8 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 				@Override
 				public List<TypeMaterial> doInSession(Session session) 
 				{
-					final Query query = 
-						session.createQuery("from TypeMaterial " +
-						"where typeID = :type");
+					// query invTypeMaterials table
+					final Query query =  session.createQuery("from TypeMaterial " +"where typeID = :type");
 
 					query.setParameter("type" , item );
 					return (List<TypeMaterial>) query.list();					
@@ -291,49 +323,108 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 
 	protected Requirements createRequirements(Activity activity,BlueprintType blueprint) 
 	{
-		final List<TypeActivityMaterials> data=
-			fetchRequirements( activity  , blueprint ); 
+		final MaterialRequirements requirementsFromDB = fetchRequirements( activity  , blueprint ); 
 
-		final Requirements requirements =
-			new Requirements( activity );
+		final Requirements requirements = new Requirements( activity );
+		
+		System.out.println("---- Simple mats required for "+blueprint);
+		System.out.println( StringUtils.join( requirementsFromDB.rawMats , "\n" ) );
+		System.out.println("---- Extra mats required for "+blueprint);
+		System.out.println( StringUtils.join( requirementsFromDB.extraMats , "\n" ) );
 
-		for ( TypeActivityMaterials requirement : data ) {
-
-			if ( requirement.getRequiredType().isSkill() ) {
-				final Prerequisite r =
-					new Prerequisite();
-				final int lvl =
-					requirement.getQuantity() ;
-				if ( lvl <= 0 ) {
-					throw new RuntimeException("Requirement "+requirement+" with skill lvl <= 0 ?");
-				}
-				r.setRequiredLevel( lvl);
-				r.setSkill( getSkillTree().getSkill( requirement.getRequiredType().getId().intValue() ) );
+		/*
+		 * Process raw materials (taken from invTypeMaterials table)
+		 */
+		for ( TypeActivityMaterials material : requirementsFromDB.rawMats ) 
+		{
+			if ( material.getRequiredType().isSkill() )
+			{
+				final Prerequisite r = toSkillPrerequisite(material);
 				requirements.addRequiredSkill( r );
-
-			} else {
-
-				final RequiredMaterial mat = new RequiredMaterial( requirement.getRequiredType() , requirement.getQuantity() );
+			} 
+			else 
+			{
+				final RequiredMaterial mat = new RequiredMaterial( material.getRequiredType() , material.getQuantity() );
 
 				if ( activity == Activity.MANUFACTURING ) 
 				{
 					// ignore bogus data in dump
-					if ( requirement.getQuantity() <= 0 ) {
+					if ( material.getQuantity() <= 0 ) {
 						continue;
 					}
-					if ( requirement.isSubjectToManufacturingWaste() || 
-							isSubjectToManufacturingWaste(blueprint , requirement) ) 
+					
+					if ( material.isSubjectToManufacturingWaste() || isSubjectToManufacturingWaste(blueprint , material) ) 
 					{
-						mat.setSubjectToManufacturingWaste( true );
+						mat.setSubjectToBPMWaste( true );
+						mat.setSubjectToSkillWaste( true );
+						mat.setSubjectToStationWaste( true );
+					} else {
+						mat.setSubjectToBPMWaste( false );
+						mat.setSubjectToSkillWaste( false );
+						mat.setSubjectToStationWaste( false );						
 					}
 				}
 
-				mat.setDamagePerJob( requirement.getDamagePerJob() );
-				mat.setSupportsRecycling( requirement.isRecycle() );
+				mat.setDamagePerJob( material.getDamagePerJob() );
+				mat.setSupportsRecycling( material.isRecycle() );
 				requirements.addRequiredMaterial( mat );
 			}
 		}
+		
+		/*
+		 * Process extra materials (taken from ramTypeActivities table)
+		 */
+		for ( TypeActivityMaterials material : requirementsFromDB.extraMats ) 
+		{
+			if ( material.getRequiredType().isSkill() )
+			{
+				final Prerequisite r = toSkillPrerequisite(material);
+				requirements.addRequiredSkill( r );
+			} 
+			else 
+			{
+				final RequiredMaterial mat = new RequiredMaterial( material.getRequiredType() , material.getQuantity() );
+
+				if ( activity == Activity.MANUFACTURING ) 
+				{
+					// ignore bogus data in dump
+					if ( material.getQuantity() <= 0 ) {
+						continue;
+					}
+					
+					/*
+					 * Special case since Odyssey: Extra materials also present 
+					 * in the simple material list are subject to PE waste _ONLY_
+					 */
+					if ( requirementsFromDB.isSimpleMaterial( material )  )
+					{
+						mat.setSubjectToBPMWaste( false );
+						mat.setSubjectToSkillWaste( true );
+						mat.setSubjectToStationWaste( false );
+					} else {
+						mat.setSubjectToBPMWaste( false );
+						mat.setSubjectToSkillWaste( false );
+						mat.setSubjectToStationWaste( false );						
+					}
+				}
+				mat.setDamagePerJob( material.getDamagePerJob() );
+				mat.setSupportsRecycling( material.isRecycle() );
+				requirements.addRequiredMaterial( mat );
+			}
+		}		
 		return requirements;
+	}
+
+	private Prerequisite toSkillPrerequisite(TypeActivityMaterials requirement) {
+		final Prerequisite r = new Prerequisite();
+		
+		final int lvl = requirement.getQuantity() ;
+		if ( lvl <= 0 ) {
+			throw new RuntimeException("Requirement "+requirement+" with skill lvl <= 0 ?");
+		}
+		r.setRequiredLevel( lvl);
+		r.setSkill( getSkillTree().getSkill( requirement.getRequiredType().getId().intValue() ) );
+		return r;
 	}
 
 	/*
@@ -359,8 +450,7 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 
 	Ignore any activity 6 typeIDs that don't have an activity 1 counterpart.				 
 	 */	
-	protected boolean isSubjectToManufacturingWaste(final BlueprintType blueprint , 
-			final TypeActivityMaterials requirement) 
+	protected boolean isSubjectToManufacturingWaste(final BlueprintType blueprint , final TypeActivityMaterials requirement) 
 	{
 		// select quantity for activity 6 of the product 
 		// the BP produces and of the material in question
@@ -412,7 +502,6 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 		if ( blueprint.getTechLevel() == 1 ) { // only Tech1 BPs can be used for invention
 			result.put( Activity.INVENTION, createRequirements( Activity.INVENTION, blueprint ) );
 		}
-
 		return result;
 	}
 

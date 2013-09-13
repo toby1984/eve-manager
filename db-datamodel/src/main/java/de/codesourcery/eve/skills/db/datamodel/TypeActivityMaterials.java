@@ -27,6 +27,8 @@ import javax.persistence.Table;
 
 import org.apache.commons.lang.ObjectUtils;
 
+import de.codesourcery.eve.skills.datamodel.Prerequisite;
+
 @Entity
 @Table(name="ramTypeRequirements")
 // @org.hibernate.annotations.Proxy(lazy=false)
@@ -162,6 +164,10 @@ public class TypeActivityMaterials {
 		this.requiredType = requiredType;
 	}
 
+	public Id getId() {
+		return id;
+	}
+	
 	public int getQuantity() {
 		return quantity;
 	}

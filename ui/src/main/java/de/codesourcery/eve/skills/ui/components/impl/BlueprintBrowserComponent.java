@@ -21,6 +21,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -39,6 +41,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.eve.skills.datamodel.Blueprint;
+import de.codesourcery.eve.skills.datamodel.CharacterID;
 import de.codesourcery.eve.skills.datamodel.Decryptor;
 import de.codesourcery.eve.skills.datamodel.ICharacter;
 import de.codesourcery.eve.skills.datamodel.IStaticDataModel;
@@ -67,6 +70,8 @@ import de.codesourcery.eve.skills.ui.utils.ImprovedSplitPane;
 import de.codesourcery.eve.skills.ui.utils.PopupMenuBuilder;
 import de.codesourcery.eve.skills.util.AmountHelper;
 import de.codesourcery.eve.skills.utils.DateHelper;
+import de.codesourcery.utils.StringTablePrinter;
+import de.codesourcery.utils.StringTablePrinter.Padding;
 
 
 public class BlueprintBrowserComponent extends AbstractComponent implements ICharacterSelectionProviderAware,
@@ -96,9 +101,8 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		new PopupMenuBuilder();
 
 	private ISelectionProvider<ICharacter> charProvider;
-	private ISelectionListener<ICharacter> selectionListener = 
-		new ISelectionListener<ICharacter>() {
-
+	private ISelectionListener<ICharacter> selectionListener =  new ISelectionListener<ICharacter>() 
+	{
 		@Override
 		public void selectionChanged(ICharacter selected) {
 			characterSelected(selected);
@@ -144,8 +148,8 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 	@Override
 	protected JPanel createPanel() {
 
-		popupMenuBuilder.addItem( "Create production plan..." , new AbstractAction() {
-
+		popupMenuBuilder.addItem( "Create production plan..." , new AbstractAction() 
+		{
 			@Override
 			public boolean isEnabled()
 			{
@@ -239,11 +243,33 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return panel;
 	}
 
-	protected void refresh() {
-		Blueprint bp = getCurrentlySelectedBlueprint();
-		if (bp != null) {
-			displayBlueprint(bp);
+	protected void refresh() 
+	{
+		final Blueprint bp = getCurrentlySelectedBlueprint();
+		if (bp != null) 
+		{
+			displayBlueprint( toBlueprintWithAttributes( bp ) ); 
 		}
+	}
+	
+	private BlueprintWithAttributes toBlueprintWithAttributes(final Blueprint bp) 
+	{
+		final BlueprintWithAttributes existing = getBestBlueprintFromLibrary( bp );
+		if ( existing != null ) {
+			return existing;
+		}
+		
+		int me = bp.getTechLevel() > 1 ? -4 : 0;
+		int pe = bp.getTechLevel() > 1 ? -4 : 0;		
+		
+		final CharacterID charId = getCurrentlySelectedCharacter().getCharacterId();
+		return new BlueprintWithAttributes(charId,bp.getType().getBlueprintType().getId(), me , pe , false) 
+		{
+			@Override
+			public Blueprint getBlueprint() {
+				return bp;
+			}
+		};
 	}
 
 	private Blueprint getCurrentlySelectedBlueprint() {
@@ -253,36 +279,15 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return null;		
 	}
 	
-	protected void displayBlueprint(final Blueprint bp) {
-		
-		BlueprintWithAttributes bestBP = null;
-		for ( BlueprintWithAttributes  attrs :  blueprintLibrary.getBlueprints( bp ) ) {
-			if ( bestBP == null || attrs.getMeLevel() > bp.getMaterialModifier() ) {
-				bestBP = attrs;
-			}
-		}
-		
-		if ( bestBP != null ) {
-			log.info("displayBlueprint(): BP "+bp.getType().getBlueprintType().getName()+" found in library ("+
-					" owned by "+bestBP.getOwningCharacterId().getValue()+" )"); 
-			displayBlueprint( bp , bestBP.getMeLevel() , bestBP.getPeLevel() );
-		} else {
-			log.info("displayBlueprint(): BP "+bp.getType().getBlueprintType().getName()+" not found in library");
-			if ( bp.getTechLevel() == 2 ) {
-				displayBlueprint( bp , -4 , -4 ); // assume user will be producing from a T2 BPC
-			} else {
-				displayBlueprint( bp , 0 , 0 );
-			}
-		}
-	}
-
-	protected void displayBlueprint(final Blueprint bp,int me,int pe) {
+	protected void displayBlueprint(final BlueprintWithAttributes bpWithAttrs) {
 
 		if ( getCurrentlySelectedCharacter() == null ) {
 			textArea.setText("No character selected.");
 			return;
 		}
 
+		final Blueprint bp = bpWithAttrs.getBlueprint();
+		
 		final StringBuilder text = new StringBuilder();
 		
 		final InventionChanceCalculator calculator =
@@ -314,17 +319,13 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 
 		text.append("\n---------------- Your skills ---------------\n\n");
 
-		appendLine(text, "Industry skill", ""
-				+ getIndustrySkillLevel() );
+		appendLine(text, "Industry skill", "" + getIndustrySkillLevel() );
 
-		appendLine(text, "Production efficiency skill", ""
-				+ getProductionEfficiencySkillLevel());
+		appendLine(text, "Production efficiency skill", "" + getProductionEfficiencySkillLevel());
 
-		appendLine(text, "Research skill", ""
-				+ getResearchSkillLevel());
+		appendLine(text, "Research skill", "" + getResearchSkillLevel());
 
-		appendLine(text, "Metallurgy skill", ""
-				+ getMetallurgySkillLevel());
+		appendLine(text, "Metallurgy skill", "" + getMetallurgySkillLevel());
 
 		text.append("\n---------------- BPO data ---------------\n\n");
 
@@ -342,27 +343,32 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 
 		text.append("\n---------------- Production times---------------\n\n");
 
-		appendLine(text, "Production time (base)", ""
-				+ calcProductionTime(bp, 0));
+		appendLine(text, "Production time (base)", "" + calcProductionTime(bp, 0));
 
-		appendLine(text, "Production time", ""
-				+ calcProductionTime(bp, getBPOProductionEfficiency()));
+		appendLine(text, "Production time", "" + calcProductionTime(bp, getBPOProductionEfficiency()));
 
 		text.append("\n---------------- Research times---------------\n\n");
 
-		String time = "<no research necessary>";
-		if ( getBPOMaterialEfficiency() > 0 ) {
-			time = ""+calcMEResearchTime(bp, getBPOMaterialEfficiency() );
+		String researchDuration;
+		if ( bp.getTechLevel() > 1 ) {
+			researchDuration = "<Blueprint copy, cannot research>";
+		} else if ( bpWithAttrs.getMeLevel() != getBPOMaterialEfficiency() ) {
+			researchDuration = ""+calcMEResearchTime(bp, bpWithAttrs.getMeLevel() , getBPOMaterialEfficiency() );
+		} else {
+			researchDuration = "<no research necessary>";
 		}
 
-		appendLine(text, "ME research to lvl "+getBPOMaterialEfficiency(), "" + time );
+		appendLine(text, "ME research lvl "+bpWithAttrs.getMeLevel()+" => "+getBPOMaterialEfficiency(), "" + researchDuration );
 
-		time = "<no research necessary>";
-		if ( getBPOProductionEfficiency() > 0 ) {
-			time = ""+calcPEResearchTime(bp, getBPOProductionEfficiency());
+		if ( bp.getTechLevel() > 1 ) {
+			researchDuration = "<Blueprint copy, cannot research>";
+		} else if ( bpWithAttrs.getPeLevel() != getBPOProductionEfficiency() ) {
+			researchDuration = ""+calcMEResearchTime(bp, bpWithAttrs.getPeLevel() , getBPOProductionEfficiency() );
+		} else {
+			researchDuration = "<no research necessary>";
 		}
-
-		appendLine(text, "PE research to lvl "+getBPOProductionEfficiency(), "" + time );
+		
+		appendLine(text, "PE research lvl "+bpWithAttrs.getPeLevel()+" => "+ getBPOProductionEfficiency(), "" + researchDuration );
 
 		renderRequirements(Activity.MANUFACTURING , bp, text);
 
@@ -426,53 +432,86 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return getCurrentlySelectedCharacter().getSkillLevel( s ).getLevel();
 	}
 
-	private void renderRequirements(final Activity activity , final Blueprint bp,
-			final StringBuilder text) 
+	private void renderRequirements(final Activity activity , final Blueprint bp,final StringBuilder text) 
 	{
 
 		final Requirements reqs = bp.getRequirementsFor( activity );
 
 		text.append("\n---------------- Materials [ "+activity.getName()+" ] ---------------\n\n");
 
-		for (RequiredMaterial mat : reqs.getRequiredMaterials()) {
+		final List<RequiredMaterial> sortedMats = new ArrayList<>( reqs.getRequiredMaterials() );
+		Collections.sort( sortedMats, new Comparator<RequiredMaterial>() {
+
+			@Override
+			public int compare(RequiredMaterial o1, RequiredMaterial o2) 
+			{
+				if ( o1.isSubjectToManufacturingWaste() && ! o2.isSubjectToManufacturingWaste() ) {
+					return -1;
+				} 
+				if ( ! o1.isSubjectToManufacturingWaste() && o2.isSubjectToManufacturingWaste() ) {
+					return 1;
+				}
+				return o1.getType().getName().compareTo( o2.getType().getName() );
+			}
+		} );
+		
+		final StringTablePrinter tablePrinter = new StringTablePrinter("Item" , "Initial" , "You" , "Waste %" , "dmg % / run" );
+		
+		final DecimalFormat FORMAT = new DecimalFormat("##0.00");
+		
+		for (RequiredMaterial mat : sortedMats ) {
 
 			final float initial = mat.getQuantity()*getRequestedQuantity();
-			final String sInitial = StringUtils.rightPad("" + initial, 8);
-
-			float you = calcRequiredMaterial(bp, mat);
+			final float you = calcRequiredMaterial(bp, mat);
 
 			float waste = 100.0f * ( you / initial) - 100.0f;
 			if (waste < 0.0f) {
 				waste = 0.0f;
 			}
-			final DecimalFormat FORMAT = new DecimalFormat("##0.00");
+			
+			final String sInitial = Float.toString( initial );			
+			final String sWaste = FORMAT.format(waste);
+			final String sYou = Float.toString( you );
 
-			final String sWaste = StringUtils.rightPad("waste: "
-					+ FORMAT.format(waste) + " %", 20);
-
-			final String sYou = StringUtils.rightPad("you: " + you, 15);
-
-			final String yourMats = " [ " + sYou + " , " + sWaste + " ]";
-
-			if ( activity == Activity.MANUFACTURING ) {
+			if ( activity == Activity.MANUFACTURING ) 
+			{
 				String sDmg = "";
-				if ( mat.getDamagePerJob() != 1.0d ) {
-					sDmg = "[ "+( mat.getDamagePerJob()*100 )+" % dmg / run ]";
+				if ( mat.getDamagePerJob() != 1.0d && mat.getDamagePerJob() > 0.0d ) {
+					sDmg = Double.toString( mat.getDamagePerJob()*100.0 );
 				} 
-
-				String notSubjectToWaste = "";
-				if ( ! mat.isSubjectToManufacturingWaste() ) {
-					notSubjectToWaste = "*";
+				
+				String wasteString = "";
+				if ( mat.isSubjectToStationWaste() ) {
+					wasteString += "(1)";
 				}
-				appendLine(text, mat.getType().getName() +notSubjectToWaste , sInitial + yourMats+sDmg );
-			} else {
-				appendLine(text, mat.getType().getName(), sInitial);
+				if ( mat.isSubjectToSkillWaste() ) {
+					wasteString += "(2)";
+				}
+				if ( mat.isSubjectToBPMWaste() ) {
+					wasteString += "(3)";
+				}
+				
+				if ( ! "".equals( wasteString ) ) 
+				{
+					tablePrinter.add( mat.getType().getName() + " " + wasteString , sInitial , sYou , sWaste , sDmg );
+				} 
+				else 
+				{
+					tablePrinter.add( mat.getType().getName()  , sInitial , sYou , sWaste , sDmg );	
+				}
+			} 
+			else {
+				tablePrinter.add( mat.getType().getName()  , sInitial , "--" , "--" , "--" );	
 			}
-
 		}
 
+		tablePrinter.setPaddingForAllColumns(Padding.LEFT).padRight(0);
+		text.append( tablePrinter.toString() );
+
 		if ( activity == Activity.MANUFACTURING ) {
-			text.append("\n(*) Material is not subject to manufacturing waste.\n");
+			text.append("\n(1) Material is subject to station waste.");
+			text.append("\n(2) Material is subject to character PE level waste.");
+			text.append("\n(3) Material is subject to blueprint ME level waste.\n");
 		}
 
 		final List<Prerequisite> requiredSkills = reqs.getRequiredSkills();
@@ -494,8 +533,7 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 			int numberOfRuns,
 			SlotAttributes slot) 
 	{
-		final ManufacturingJobRequest job = 
-			new ManufacturingJobRequest( blueprint );
+		final ManufacturingJobRequest job =  new ManufacturingJobRequest( blueprint );
 
 		job.setCharacter( character );
 		job.setMaterialEfficiency( bpoME );
@@ -581,29 +619,33 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		/*
 		 Copy Time ={Blueprint Base Copy Time} * ( 1 - (0.05 * {Science Skill Level} ) * {Copy Slot Modifier} * {Implant Modifier}
 		 */
-		long time = bp.calculateCopyTime( getScienceSkillLevel() ,
-				getSlotLocation() ,
-				1.0f );
-
+		// TODO: Implant modifier is not honored here
+		final long time = bp.calculateCopyTime( getScienceSkillLevel() , getSlotLocation() , 1.0f );
 		return DateHelper.durationToString(time * 1000 );
 	}
 
-	private String calcMEResearchTime(Blueprint bp, int PE) {
+	private String calcMEResearchTime(Blueprint bp, int fromME,int toME) {
 
-		long time = bp.calculateMEResearchTime( getMetallurgySkillLevel(),
-				getSlotLocation() ,
-				1.0f )*PE;
-
-		return DateHelper.durationToString(time * 1000);
+		if ( fromME > toME ) {
+			throw new IllegalArgumentException("fromME must be <= toME");
+		}
+		// TODO: Implant modifier is not honored here (always set to 1.0f) !!!
+		final long time1 = bp.calculateMEResearchTime( getMetallurgySkillLevel(), getSlotLocation() , 1.0f )*fromME;
+		final long time2 = bp.calculateMEResearchTime( getMetallurgySkillLevel(), getSlotLocation() , 1.0f )*toME;
+		final long delta = time2-time1;
+		return DateHelper.durationToString( delta * 1000);
 	}
 
-	private String calcPEResearchTime(Blueprint bp, int PE) {
-
-		long time = bp.calculatePEResearchTime( getResearchSkillLevel(),
-				getSlotLocation() ,
-				1.0f )*PE;
-
-		return DateHelper.durationToString(time * 1000);
+	private String calcPEResearchTime(Blueprint bp, int fromPE,int toPE) 
+	{
+		if ( fromPE > toPE ) {
+			throw new IllegalArgumentException("fromPE must be <= toPE");
+		}
+		// TODO: Implant modifier is not honored here (always set to 1.0f) !!!
+		final long time1 = bp.calculatePEResearchTime( getMetallurgySkillLevel(), getSlotLocation() , 1.0f )*fromPE;
+		final long time2 = bp.calculatePEResearchTime( getMetallurgySkillLevel(), getSlotLocation() , 1.0f )*toPE;
+		final long delta = time2-time1;
+		return DateHelper.durationToString( delta * 1000);		
 	}
 
 	protected SlotAttributes getSlotLocation() {
@@ -650,10 +692,9 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		appendLine( builder , 25 , col1 , col2 );
 	}
 
-	protected static void appendLine(StringBuilder builder, int len , String col1,
-			String col2) {
-		builder.append(StringUtils.rightPad(col1, len , ' ')).append(" : ")
-		.append(col2).append("\n");
+	protected static void appendLine(StringBuilder builder, int len , String col1,String col2) 
+	{
+		builder.append(StringUtils.rightPad(col1, len , ' ')).append(" : ").append(col2).append("\n");
 	}
 
 	protected IStaticDataModel getDataModel() {
@@ -706,34 +747,32 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return material.calcRequiredMaterial( jobRequest , peSkill , false );
 	}
 
-	private int getBPOMaterialEfficiency() {
-		final String val = selectedME.getText();
-		System.out.println("Selected target ME level: "+val);
-		if (StringUtils.isBlank(val)) {
-			return 0;
-		}
-		try {
-			return Integer.parseInt(val.trim());
-		} catch (Exception e) {
-			return 0;
-		}
+	private int getBPOMaterialEfficiency() 
+	{
+		return getInteger( selectedME );		
 	}
 
-	private int getBPOProductionEfficiency() {
-		final String val = selectedPE.getText();
-		System.out.println("Selected target PE level: "+val);
-		
-		if (StringUtils.isBlank(val)) {
-			return 0;
-		}
+	private int getBPOProductionEfficiency() 
+	{
+		return getInteger( selectedPE );
+	}
+	
+	private int getInteger(JTextField tf) 
+	{
+		final String val = tf.getText();
 		try {
-			return Integer.parseInt(val.trim());
-		} catch (Exception e) {
-			return 0;
+			if ( StringUtils.isNotBlank(val) ) {
+				return Integer.parseInt(val.trim());
+			}
+		} 
+		catch (Exception e) {
+			e.printStackTrace();
 		}
+		return 0;
 	}
 
-	protected static boolean isNumeric(String s) {
+	protected static boolean isNumeric(String s) 
+	{
 		if ( StringUtils.isBlank( s ) ) {
 			return false;
 		}
@@ -817,21 +856,30 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 			
 			quantity.setText( ""+bp.getPortionSize() );
 			
-			final BlueprintWithAttributes existing =
-				getBestBlueprintFromLibrary( bp );
+			final BlueprintWithAttributes existing = getBestBlueprintFromLibrary( bp );
 
-			if ( existing == null ) {
-				displayBlueprint(bp);
-			} else {
-				displayBlueprint(bp , existing.getMeLevel() , existing.getPeLevel() );
+			final int me;
+			final int pe;
+			if ( existing == null ) 
+			{
+				me = bp.getTechLevel() == 2 ? -4 : 0;
+				pe = bp.getTechLevel() == 2 ? -4 : 0;
+			} 
+			else 
+			{
+				me = existing.getMeLevel();
+				pe = existing.getPeLevel();
 			}
-		}		
+			
+			selectedME.setText( Integer.toString( me ) );
+			selectedPE.setText( Integer.toString( pe ) );
+			displayBlueprint( toBlueprintWithAttributes(bp));
+		}	
 	}
 
 	@Override
 	public void doubleClicked(Blueprint data)
 	{
-		
 		final ICharacter c = getCurrentlySelectedCharacter();
 		if ( c == null ) {
 			return;

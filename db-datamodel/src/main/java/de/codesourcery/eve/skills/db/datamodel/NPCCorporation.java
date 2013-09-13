@@ -25,7 +25,7 @@ import javax.persistence.Table;
 import de.codesourcery.eve.skills.datamodel.INamedEntity;
 
 @Entity
-@Table(name="crpNpcCorporations")
+@Table(name="crpNPCCorporations")
 // @org.hibernate.annotations.Proxy(lazy=false)
 public class NPCCorporation implements INamedEntity
 {

@@ -145,24 +145,20 @@ public abstract class Blueprint {
 		}
 	}
 	
-	public long calculateMEResearchTime(int metallurgySkillLevel, SlotAttributes slot , float implantModifier ) {
-		
+	public long calculateMEResearchTime(int metallurgySkillLevel, SlotAttributes slot , float implantModifier ) 
+	{
 		/*
-ME Research Time = 
-			{ Blueprint Base Research Time} * ( 1 - (0.05 * { Metallurgy Skill Level}) ) * {Research Slot Modifier} * {Implant Modifier}
+         * ME Research Time =  { Blueprint Base Research Time} * ( 1 - (0.05 * { Metallurgy Skill Level}) ) * {Research Slot Modifier} * {Implant Modifier}
 		 */
-		
 		return Math.round( getResearchMaterialTime() * ( 1.0f - (0.05f * metallurgySkillLevel ) ) * slot.getResearchTimeModifier() * implantModifier );
 	}
 	
 
-	public long calculatePEResearchTime(int researchSkillLevel, SlotAttributes slot , float implantModifier ) {
-		
+	public long calculatePEResearchTime(int researchSkillLevel, SlotAttributes slot , float implantModifier ) 
+	{
 		/*
-ME Research Time = 
-			{ Blueprint Base Research Time} * ( 1 - (0.05 * { research Skill Level}) ) * {Research Slot Modifier} * {Implant Modifier}
+         * ME Research Time =  { Blueprint Base Research Time} * ( 1 - (0.05 * { research Skill Level}) ) * {Research Slot Modifier} * {Implant Modifier}
 		 */
-		
 		return Math.round( getResearchMaterialTime() * ( 1.0f - (0.05f * researchSkillLevel ) ) * slot.getResearchTimeModifier() * implantModifier );
 	}
 	

@@ -83,5 +83,4 @@ public abstract class BlueprintWithAttributes
 	{
 		return foundInAssets;
 	}
-	
 }

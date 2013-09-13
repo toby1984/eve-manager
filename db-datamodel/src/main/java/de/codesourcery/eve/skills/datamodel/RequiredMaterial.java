@@ -38,17 +38,24 @@ public class RequiredMaterial {
 	 * required material when manufacturing
 	 * the corresponding blueprint's item.
 	 */
-	private boolean isSubjectToWaste;
+	private boolean isSubjectToSkillWaste; // required material quantity affected by PE level of player
+	private boolean isSubjectToBPMWaste; // required material quantity affected by ME level of blueprint 	
+	private boolean isSubjectToStationWaste; // required material quantity affected by standings of player towards station
+	// where the item is being manufactured
 	
-	public RequiredMaterial(RequiredMaterial original,int newQuantity) {
+	public RequiredMaterial(RequiredMaterial original,int newQuantity) 
+	{
 		this( original.getType() , newQuantity );
 		
 		setDamagePerJob( original.getDamagePerJob() );
 		setSupportsRecycling( original.supportsRecycling() );
-		setSubjectToManufacturingWaste( original.isSubjectToManufacturingWaste() );
+		setSubjectToBPMWaste( original.isSubjectToBPMWaste() );
+		setSubjectToSkillWaste( original.isSubjectToSkillWaste() );
+		setSubjectToStationWaste( original.isSubjectToStationWaste() );		
 	}
 	
-	public RequiredMaterial(InventoryType type,int quantity) {
+	public RequiredMaterial(InventoryType type,int quantity) 
+	{
 		if ( type == null ) {
 			throw new IllegalArgumentException("type cannot be NULL");
 		}
@@ -68,11 +75,15 @@ public class RequiredMaterial {
 		return quantity;
 	}
 	
-	public static RequiredMaterial createNew(RequiredMaterial m,int newQuantity) {
-		final RequiredMaterial newMat = 
-			new RequiredMaterial( m.getType() , newQuantity );
+	public static RequiredMaterial createNew(RequiredMaterial m,int newQuantity)
+{
+		final RequiredMaterial newMat = new RequiredMaterial( m.getType() , newQuantity );
+		
 		newMat.setDamagePerJob( m.getDamagePerJob() );
-		newMat.setSubjectToManufacturingWaste( m.isSubjectToManufacturingWaste() );
+		
+		newMat.setSubjectToBPMWaste( m.isSubjectToBPMWaste() );
+		newMat.setSubjectToSkillWaste( m.isSubjectToSkillWaste() );
+		newMat.setSubjectToStationWaste( m.isSubjectToStationWaste() );
 		newMat.setSupportsRecycling( m.supportsRecycling() );
 		return newMat;
 	}
@@ -120,8 +131,7 @@ public class RequiredMaterial {
 	public float calcRequiredMaterial(ManufacturingJobRequest jobRequest,
 			Skill productionEfficiencySkill,boolean honorDamagePerRun) 
 	{
-		final int peSkillLevel = 
-			jobRequest.getCharacter().getSkillLevel( productionEfficiencySkill ).getLevel();
+		final int peSkillLevel = jobRequest.getCharacter().getSkillLevel( productionEfficiencySkill ).getLevel();
 		
 		final int runs = jobRequest.getRuns();
 		
@@ -141,26 +151,26 @@ public class RequiredMaterial {
 	 * @param honorDamagePerJob
 	 * @return
 	 */
-	private float calcRequiredMaterial(int runs, Blueprint bp,
-			int bpoMaterialEfficiency, int productionEfficiencySkill,
-			boolean honorDamagePerJob) {
-
-		/*
-		 * !!! See isSubjectToManufacturingWaste() method !!!
+	private float calcRequiredMaterial(int runs, Blueprint bp, int bpoMaterialEfficiency, int productionEfficiencySkill, boolean honorDamagePerJob) 
+	{
+		/* !!! See isSubjectToManufacturingWaste() method !!!
 		 * 
 		 * Some materials ("extra" materials) are NOT subject to manufacturing waste.
 		 * 
-		 * If bpMaterialLevel >= 0 Then wasteMod = ((wasteFactor/100) /
-		 * (bpMaterialLevel + 1)) Else wasteMod = (-bpMaterialLevel + 1) / 10
+		 * If bpMaterialLevel >= 0 Then 
+		 *     wasteMod = ((wasteFactor/100) / (bpMaterialLevel + 1)) 
+		 * Else 
+		 *     wasteMod = (-bpMaterialLevel + 1) / 10
 		 * End If
 		 * 
-		 * SkillBonus = 1.25 - (0.05 * CharSkillLevel) StationBonus =
-		 * StationMaterialModifier - 1
+		 * SkillBonus = 1.25 - (0.05 * CharSkillLevel)    ==> 1 for PE skill lvl 5
 		 * 
-		 * BPMLWaste = BaseMaterialReq * wasteMod SkillWaste = BaseMaterialReq *
-		 * (SkillBonus - 1) StationWaste = BaseMaterialReq * (SkillBonus *
-		 * StationBonus)
+		 * StationBonus = StationMaterialModifier - 1
 		 * 
+		 * BPMLWaste = BaseMaterialReq * wasteMod 
+		 * SkillWaste = BaseMaterialReq * (SkillBonus - 1)   ===> 0 for PE skill lvl 5
+		 * 
+		 * StationWaste = BaseMaterialReq * (SkillBonus * * StationBonus)
 		 * 
 		 * Waste = Round(BPMLWaste + SkillWaste + StationWaste, 0)
 		 */
@@ -175,10 +185,10 @@ public class RequiredMaterial {
 		}
 
 		float skillBonus = 1.25f - (0.05f * (float) productionEfficiencySkill);
-		float stationBonus = 1.0f - 1.0f; // TODO: stationMaterialModifier -1
+		float stationBonus = 1.0f - 1.0f; // TODO: stationMaterialModifier - 1
 
 		final float realQuantity;
-		if (honorDamagePerJob && isSubjectToManufacturingWaste() ) 
+		if (honorDamagePerJob && isSubjectToDamagePerRunWaste() ) 
 		{
 			realQuantity = (float) (quantity * damagePerJob);
 		} else {
@@ -189,18 +199,50 @@ public class RequiredMaterial {
 		float skillWaste = realQuantity * (skillBonus - 1.0f);
 		float stationWaste = realQuantity * (skillBonus * stationBonus);
 
-		float wasteQuantity = blueprintWaste + skillWaste + stationWaste;
-
-		float adjustedCost;
-		if ( isSubjectToManufacturingWaste() ) {
-			adjustedCost = realQuantity + wasteQuantity;
-		} else {
-			adjustedCost = realQuantity;
+		float wasteQuantity=0;
+		if ( isSubjectToBPMWaste() ) {
+			wasteQuantity += blueprintWaste;
+		}
+		
+		if ( isSubjectToSkillWaste() ) {
+			wasteQuantity += skillWaste;
+		}
+		
+		if ( isSubjectToStationWaste() ) {
+			wasteQuantity += stationWaste;
 		}
 
-		float result =
-			runs * (float) Math.round( adjustedCost);
+		float adjustedCost = realQuantity + wasteQuantity;
+
+		float result = runs * (float) Math.round( adjustedCost);
 		return result < 1.0f ? 1.0f : result;
+	}
+	
+	private boolean isSubjectToDamagePerRunWaste() 
+	{
+		return isSubjectToBPMWaste || isSubjectToStationWaste;
+	}
+	
+	public void setSubjectToBPMWaste(boolean isSubjectToBPMWaste) {
+		this.isSubjectToBPMWaste = isSubjectToBPMWaste;
+	}
+	
+	public void setSubjectToSkillWaste(boolean isSubjectToSkillWaste) {
+		this.isSubjectToSkillWaste = isSubjectToSkillWaste;
+	}
+	
+	public void setSubjectToStationWaste(boolean isSubjectToStationWaste) {
+		this.isSubjectToStationWaste = isSubjectToStationWaste;
+	}
+	
+	/**
+	 * 
+	 * @return <code>true</code> if this material is subject to either Blueprint material level waste , PE skill waste
+	 * or station standing waste
+	 */
+	public boolean isSubjectToManufacturingWaste() 
+	{
+		return isSubjectToBPMWaste || isSubjectToSkillWaste || isSubjectToStationWaste;
 	}
 
 	/**
@@ -210,19 +252,36 @@ public class RequiredMaterial {
 	 * categories in the summary screen when you go to build something.
 	 * 
 	 * Anything in the raw materials category is subject to waste, anything in
-	 * the extra materials category is not. It's that simple. As a general rule
-	 * Tech II materials for modules are usually considered extra, while for
-	 * ships they are considered raw. This came as quite a surprise to me as
-	 * someone who invented and built T2 modules before I got around to ships. I
-	 * was used to no T2 waste mats and thought it was the norm.
+	 * the extra materials category is not (UNLESS it's also present 
+	 * in the invTypeMaterials table for the same blueprint , these are subject 
+	 * to PE/skill waste ONLY. This was introduced with the Odyssee expansion).
 	 * 
+	 * @return <code>true</code> if the actual required quantity depends on the PE (production efficiency) 
+	 * level of the character 
+	 */	 
+	public boolean isSubjectToSkillWaste() {
+		return isSubjectToSkillWaste;
+	}
+	
+	/**
+	 * Being subject to waste isn't an attribute of the material, it is a
+	 * property of each entry on the blueprint. Each blueprint has 2 categories
+	 * of materials, raw materials and extra materials. It shows you these two
+	 * categories in the summary screen when you go to build something.
+	 * 
+	 * Anything in the raw materials category is subject to waste, anything in
+	 * the extra materials category is not (UNLESS it's also present 
+	 * in the invTypeMaterials table for the same blueprint , these are subject 
+	 * to PE/skill waste ONLY. This was introduced with the Odyssee expansion).
+	 * 
+	 * @return <code>true</code> if the actual required quantity depends on the ME (material efficiency)
+	 * level of the BLUEPRINT
 	 */
-	public void setSubjectToManufacturingWaste(boolean isSubjectToWaste) {
-		this.isSubjectToWaste = isSubjectToWaste;
+	public boolean isSubjectToBPMWaste() {
+		return isSubjectToBPMWaste;
+	}	
+	
+	public boolean isSubjectToStationWaste() {
+		return isSubjectToStationWaste;
 	}
-
-	public boolean isSubjectToManufacturingWaste() {
-		return isSubjectToWaste;
-	}
-
 }
