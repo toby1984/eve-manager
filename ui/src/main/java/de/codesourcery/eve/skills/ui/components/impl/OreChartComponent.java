@@ -141,7 +141,7 @@ public class OreChartComponent extends AbstractComponent
 		}
 	};
 	
-	private TotalItemValueComponent<String> oreHoldValue = new TotalItemValueComponent<String>(dataProvider);
+	private TotalItemValueComponent<String> oreHoldValue = new TotalItemValueComponent<String>("Cargo hold value (ISK)", dataProvider);
 
 	private final class PriceCache 
 	{
@@ -499,13 +499,6 @@ public class OreChartComponent extends AbstractComponent
 		
 		splitPane.setDividerLocation( 0.3 );
 		
-		/*
-	private JTextField oreHoldSize = new JTextField("8500");
-	private JComboBox<String> oreChooser = new JComboBox<>();
-	private JComboBox<OreVariant> oreVariantChooser = new JComboBox<>();
-	private JTextField oreHoldValue = new JTextField("0.0");		 
-		 */
-		
 		// setup ore hold panel
 		final JPanel oreHoldPanel = new JPanel();
 		oreHoldPanel.setLayout(new GridBagLayout());
@@ -533,30 +526,30 @@ public class OreChartComponent extends AbstractComponent
 		).enableDebugMode().addTo( oreHoldPanel );
 		
 		final List<String> oreNames = refiningData.getOreNames(OreVariant.BASIC);
+		Collections.sort(oreNames);
+		
 		oreChooser.setModel( new DefaultComboBoxModel<>( new Vector<String>( oreNames ) ) );
 		oreChooser.setSelectedItem( oreNames.get(0) );
 		
 		oreVariantChooser.setModel( new DefaultComboBoxModel<>( OreVariant.values() ) );
 		oreVariantChooser.setSelectedItem( OreVariant.BASIC );
 		
-		oreChooser.addActionListener( new ActionListener() {
+		final ActionListener refreshListener = new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				refresh();
 			}
-		} );		
+		};
 		
-		oreVariantChooser.addActionListener( new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				refresh();
-			}
-		} );	
+		oreHoldSize.addActionListener( refreshListener );
+		oreChooser.addActionListener( refreshListener );
+		oreVariantChooser.addActionListener( refreshListener );
 		
 		new GridLayoutBuilder()
 		.add( new VerticalGroup( new Cell(oreHoldPanel).noResize() , new Cell( splitPane ) ) )
 		.addTo( result );
 		
+		refresh();
 		
 		return result;
 	}

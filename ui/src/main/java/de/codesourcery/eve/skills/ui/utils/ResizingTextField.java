@@ -31,12 +31,6 @@ public class ResizingTextField extends JTextField
         this( "" );
     }
 
-    /**
-     * Initialize the KlangLabel
-     * 
-     * @param lblText
-     *            initial label text
-     */
     public ResizingTextField(String text) {
         super( text );
 
@@ -44,7 +38,6 @@ public class ResizingTextField extends JTextField
         int height = fm.getHeight();
 
         this.setMaximumSize( new java.awt.Dimension( 10000, height + 6 ) );
-        // this.setPreferredSize( new java.awt.Dimension( 0, height + 6 ) );
     }
 
     /**
@@ -58,32 +51,42 @@ public class ResizingTextField extends JTextField
     {
         super.setText( text );
 
-        setPreferredSize( calcSize( text ) );
+        final Dimension newSize = calcSize( text );
+        System.out.println("New preferred size: "+newSize);
+		setMinimumSize( newSize );
+		setPreferredSize( newSize );
 
         // find top-level parent container
         Container parent = getParent();
-        while ( parent != null )
-        {
-            if ( parent.getParent() != null && parent.getParent() instanceof JComponent )
-            {
-                parent = parent.getParent();
-            }
-            else
-            {
-                break;
-            }
-        }
+//        while ( parent != null )
+//        {
+//            if ( parent.getParent() != null && parent.getParent() instanceof JComponent )
+//            {
+//                parent = parent.getParent();
+//            }
+//            else
+//            {
+//                break;
+//            }
+//        }
 
-        if ( parent instanceof JComponent )
+//        if ( parent instanceof JComponent )
+//        {
+//        	System.out.println("*** invalidating "+parent);
+//            ( (JComponent) getParent() ).revalidate();
+//            ( (JComponent) getParent() ).repaint();
+//        }
+        
+        if ( parent instanceof Container )
         {
-            ( (JComponent) getParent() ).revalidate();
-            ( (JComponent) getParent() ).repaint();
-        }
+        	System.out.println("*** invalidating "+parent);
+        	getParent().invalidate();
+        	getParent().validate();
+        }        
     }
 
-    private Dimension calcSize(String text)
+    protected Dimension calcSize(String text)
     {
-
         final FontMetrics fm = this.getFontMetrics( this.getFont() );
         final int height = fm.getHeight();
 
@@ -91,8 +94,8 @@ public class ResizingTextField extends JTextField
         final String realText =
                 StringUtils.isBlank( text ) ? StringUtils.leftPad( "X", colCount, " " )
                         : " " + text + " ";
-
-        int width = fm.stringWidth( realText ) + 10;
+                
+        int width = (int) (1.2f*fm.stringWidth( realText ) );
         return new Dimension( width, height + 6 );
     }
 
@@ -101,5 +104,4 @@ public class ResizingTextField extends JTextField
     {
         return calcSize( getText() );
     }
-
 }

@@ -110,19 +110,21 @@ public class GridLayoutBuilder
 			@Override
 			public void add(ILayoutElement elem,Component comp, int x, int y, int width, int height,EnumSet<LayoutHints> hints)
 			{
-				if ( debugMode ) 
-				{
-					System.out.println(" x="+x+" , y= "+y+" , width="+width+", height="+height+", hints="+hints+", component="+elem);
-				}
+				final ConstraintsBuilder builder = new ConstraintsBuilder().width( width ).height( height ).x( x ).y( y );
 				
-				final ConstraintsBuilder builder = 
-					new ConstraintsBuilder().width( width ).height( height ).x( x ).y( y );
-				
+				String resize="none";
 				if ( hints.contains( LayoutHints.NO_RESIZING ) ) {
 					builder.noResizing();
 				} else {
-					builder.resizeBoth();
+					resize="resize_both";
+					builder.weightX(0.5d).weightY(0.5d).resizeBoth();
 				}
+				
+				if ( debugMode ) 
+				{
+					System.out.println(" x="+x+" , y= "+y+" , " +
+							"width="+width+" ("+elem.getWidth()+") , height="+height+" ("+elem.getHeight()+") , hints="+hints+", resize="+resize+", component="+elem);
+				}				
 				
 				if ( hints.contains( LayoutHints.ALIGN_RIGHT ) ) {
 					builder.anchorEast();
@@ -344,16 +346,16 @@ public class GridLayoutBuilder
 					w = remainingWidth;
 				} 
 				
-				if ( e instanceof VerticalGroup ) {
-					w = width;
-				}
+//				if ( e instanceof VerticalGroup ) {
+//					w = width;
+//				}
 				
 				e.addToContainer(container, currentX, currentY, w  , height );
 				
-				if ( ! ( e instanceof VerticalGroup ) ) {
+//				if ( ! ( e instanceof VerticalGroup ) ) {
 					remainingWidth -= w;
 					currentX += w;
-				}
+//				}
 			}
 		}
 
@@ -523,6 +525,11 @@ public class GridLayoutBuilder
 		int y = 0;
 		int w = getMaxWidth();
 		int h = getMaxHeight();
+		
+		if ( debugMode ) {
+			System.out.println("Max. width: "+w);
+			System.out.println("Max. height: "+h);
+		}
 		for ( ILayoutContainer<?> c : this.elements ) {
 			if ( c instanceof HorizontalGroup ) {
 				c.addToContainer( container , x ,y , w , h );

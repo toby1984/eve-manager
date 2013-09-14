@@ -99,7 +99,7 @@ public class OreRefiningData
 			@Override
 			public String getDisplayName()
 			{
-				return "Basic (no yield bonus)";
+				return "Basic";
 			}
 
 			@Override
@@ -118,7 +118,7 @@ public class OreRefiningData
 			@Override
 			public String getDisplayName()
 			{
-				return "Medium (5% yield bonus)";
+				return "Medium (+5% yield)";
 			}
 
 			@Override
@@ -137,7 +137,7 @@ public class OreRefiningData
 			@Override
 			public String getDisplayName()
 			{
-				return "Improved (10% yield bonus)";
+				return "Improved (+10% yield)";
 			}
 
 			@Override
@@ -156,8 +156,12 @@ public class OreRefiningData
 		public abstract String getDisplayName();
 
 		public abstract double  getYieldModifier();
+		
+		@Override
+		public final String toString() {
+			return getDisplayName();
+		}		
 	}
-
 
 	/**
 	 * Holds data about the refining outcome

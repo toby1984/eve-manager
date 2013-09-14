@@ -15,6 +15,7 @@
  */
 package de.codesourcery.eve.skills.ui.components.impl;
 
+import java.awt.Dimension;
 import java.awt.GridBagLayout;
 import java.util.Collection;
 
@@ -33,7 +34,14 @@ public class TotalItemValueComponent<X> extends AbstractComponent
 {
     private final String title;
 
-    private final ResizingTextField textField = new ResizingTextField();
+    private final ResizingTextField textField = new ResizingTextField() {
+    	protected java.awt.Dimension calcSize(String text) 
+    	{
+    		Dimension result1 = super.calcSize(text);
+    		Dimension result2 = super.calcSize(title);    
+    		return new Dimension(Math.max(result1.width,result2.width) , Math.max(result1.height,result2.height));
+    	};
+    };
 
     private final IDataProvider<X> dataProvider;
 
