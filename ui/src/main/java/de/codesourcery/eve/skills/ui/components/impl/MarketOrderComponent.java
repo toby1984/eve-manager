@@ -17,6 +17,7 @@ package de.codesourcery.eve.skills.ui.components.impl;
 
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import javax.annotation.Resource;
@@ -207,7 +208,15 @@ public class MarketOrderComponent extends AbstractComponent
 				.add("Item")
 				.add("Type")
 				.add("State")
-				.add("Price")
+				.add("Price",String.class, new Comparator<String>() {
+
+					@Override
+					public int compare(String o1, String o2) {
+						long va1 = AmountHelper.parseISKAmount( o1 );
+						long va2 = AmountHelper.parseISKAmount( o2 );
+						return Long.compare(va1,va2);
+					}
+				})
 				.add("Station")
 				.add("Volume",Long.class)
 				.add("Volume remaining",Long.class)
