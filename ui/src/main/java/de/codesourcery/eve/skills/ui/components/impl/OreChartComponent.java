@@ -17,21 +17,29 @@ package de.codesourcery.eve.skills.ui.components.impl;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.GridBagLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Vector;
 
 import javax.annotation.Resource;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellRenderer;
 
@@ -51,20 +59,23 @@ import de.codesourcery.eve.skills.market.MarketFilter;
 import de.codesourcery.eve.skills.market.MarketFilterBuilder;
 import de.codesourcery.eve.skills.market.PriceInfoQueryResult;
 import de.codesourcery.eve.skills.production.OreRefiningData;
+import de.codesourcery.eve.skills.production.OreRefiningData.OreVariant;
 import de.codesourcery.eve.skills.production.OreRefiningData.RefiningOutcome;
 import de.codesourcery.eve.skills.ui.components.AbstractComponent;
+import de.codesourcery.eve.skills.ui.components.impl.TotalItemValueComponent.IDataProvider;
 import de.codesourcery.eve.skills.ui.config.IAppConfigProvider;
 import de.codesourcery.eve.skills.ui.config.IRegionQueryCallback;
 import de.codesourcery.eve.skills.ui.model.AbstractTableModel;
 import de.codesourcery.eve.skills.ui.model.TableColumnBuilder;
 import de.codesourcery.eve.skills.ui.utils.GridLayoutBuilder;
+import de.codesourcery.eve.skills.ui.utils.GridLayoutBuilder.Cell;
+import de.codesourcery.eve.skills.ui.utils.GridLayoutBuilder.HorizontalGroup;
+import de.codesourcery.eve.skills.ui.utils.GridLayoutBuilder.VerticalGroup;
 import de.codesourcery.eve.skills.ui.utils.ImprovedSplitPane;
 import de.codesourcery.eve.skills.ui.utils.PersistentDialogManager;
 import de.codesourcery.eve.skills.ui.utils.PlainTextTransferable;
 import de.codesourcery.eve.skills.ui.utils.PopupMenuBuilder;
 import de.codesourcery.eve.skills.ui.utils.RegionSelectionDialog;
-import de.codesourcery.eve.skills.ui.utils.GridLayoutBuilder.Cell;
-import de.codesourcery.eve.skills.ui.utils.GridLayoutBuilder.VerticalGroup;
 import de.codesourcery.eve.skills.util.AmountHelper;
 import de.codesourcery.eve.skills.utils.DateHelper;
 import de.codesourcery.eve.skills.utils.EveDate;
@@ -102,11 +113,39 @@ public class OreChartComponent extends AbstractComponent
 	private final MineralPriceTableModel mineralPriceTableModel; 
 
 	private final PriceCache priceCache;
+	
+	private JTextField oreHoldSize = new JTextField("8500");
+	private JComboBox<String> oreChooser = new JComboBox<>();
+	private JComboBox<OreVariant> oreVariantChooser = new JComboBox<>();
+	
+	private final IDataProvider<String> dataProvider = new IDataProvider<String>() {
+
+		@Override
+		public int getQuantity(String obj) 
+		{
+			try {
+				return Integer.parseInt( oreHoldSize.getText() );
+			} catch(Exception e) {
+				oreHoldSize.setText("8500");
+				return 8500;
+			}
+		}
+
+		@Override
+		public ISKAmount getPricePerUnit(String obj) 
+		{
+			final String oreName = (String) oreChooser.getSelectedItem();
+			final InventoryType oreType = refiningData.getVariantType( oreName , getSelectedOreVariant() );
+			final List<? extends ItemWithQuantity> refiningOutcome = refiningData.getRefiningOutcome( oreType );
+			return getISKperM3( oreType , refiningOutcome );
+		}
+	};
+	
+	private TotalItemValueComponent<String> oreHoldValue = new TotalItemValueComponent<String>(dataProvider);
 
 	private final class PriceCache 
 	{
-		private final Map<Long,PriceInfo> priceInfoCache =
-			new HashMap<Long,PriceInfo> ();
+		private final Map<Long,PriceInfo> priceInfoCache = new HashMap<Long,PriceInfo> ();
 
 		public void flush() {
 			priceInfoCache.clear();
@@ -158,21 +197,19 @@ public class OreChartComponent extends AbstractComponent
 	
 	private final class TableRow {
 
-		public final InventoryType basicOre;
+		public final InventoryType oreType;
 		public final String oreName;
 		public final List<? extends ItemWithQuantity> data;
 
-		public TableRow(InventoryType basicOre, String oreName,
-				List<? extends ItemWithQuantity> data) {
-			this.basicOre = basicOre;
+		public TableRow(InventoryType oreType, String oreName,List<? extends ItemWithQuantity> data) {
+			this.oreType = oreType;
 			this.oreName = oreName;
 			this.data = data;
 		}
 
 		public ItemWithQuantity getYieldForMineral(int columnIndex) {
 
-			final String mineralName =
-				OreRefiningData.getMineralNames().get( columnIndex - FIRST_MINERAL_COLUMN );
+			final String mineralName = OreRefiningData.getMineralNames().get( columnIndex - FIRST_MINERAL_COLUMN );
 
 			for ( ItemWithQuantity it : data ) {
 				if ( it.getType().getName().equals( mineralName ) ) {
@@ -248,6 +285,12 @@ public class OreChartComponent extends AbstractComponent
 		this.priceCache = new PriceCache();
 		this.mineralPriceTableModel = new MineralPriceTableModel();
 		mineralPriceTable.setModel( mineralPriceTableModel );
+		registerChildren( oreHoldValue );
+	}
+	
+	private OreVariant getSelectedOreVariant() {
+		OreVariant result = (OreVariant) oreVariantChooser.getSelectedItem();
+		return result == null ? OreVariant.BASIC : result;
 	}
 
 	@Override
@@ -262,7 +305,13 @@ public class OreChartComponent extends AbstractComponent
 		tableModel.refresh();
 		mineralPriceTableModel.refresh();
 	}
-
+	
+	protected void refresh() {
+		tableModel.refresh();
+		mineralPriceTableModel.refresh();
+		oreHoldValue.setItems( Arrays.asList("dummyValue" ) );
+	}
+	
 	private final class MyTableModel extends AbstractTableModel<TableRow> {
 
 		private List<TableRow> rows =
@@ -281,17 +330,18 @@ public class OreChartComponent extends AbstractComponent
 			lastMineralColumn=FIRST_MINERAL_COLUMN+this.mineralNames.size()-1;
 		}
 
-		public void refresh() {
+		public void refresh() 
+		{
 			rows.clear();
 
-			for ( String ore : refiningData.getAllBasicOreNames() ) 
+			final OreVariant oreVariant = getSelectedOreVariant();
+			for ( String ore : refiningData.getOreNames( oreVariant ) ) 
 			{
-				final RefiningOutcome outcome = 
-					refiningData.getRawOutcome( ore );
+				final RefiningOutcome outcome =  refiningData.getRawOutcome( ore );
 
 				rows.add( 
 						new TableRow(  
-								outcome.getBasicType() , 
+								outcome.getType( oreVariant ) , 
 								ore ,
 								refiningData.getRefiningOutcome( ore ) 
 						)
@@ -338,27 +388,9 @@ public class OreChartComponent extends AbstractComponent
 			}
 		}
 		
-		public ISKAmount getISKperM3(TableRow r) {
-			final double unitsPerM3 = 1.0d / r.basicOre.getVolume();
-			final double batchesPerM3 = unitsPerM3 / r.basicOre.getPortionSize();
-
-			final long avgSellPrive = calculateBatchSellPrice( r );
-
-			return new ISKAmount( avgSellPrive ).multiplyBy( batchesPerM3 );
-		}
-
-		private long calculateBatchSellPrice(TableRow r ) 
+		public ISKAmount getISKperM3(TableRow r) 
 		{
-
-			long batchValue=0;
-			for ( ItemWithQuantity x : r.data ) 
-			{
-				long avgMineralSellPrive = 
-					priceCache.getSellPrice( x.getType() ).getAveragePrice();
-
-				batchValue += (  avgMineralSellPrive * x.getQuantity() );
-			}
-			return batchValue;
+			return OreChartComponent.this.getISKperM3( r.oreType , r.data );
 		}
 
 		@Override
@@ -372,8 +404,29 @@ public class OreChartComponent extends AbstractComponent
 		{
 			return rows.size();
 		}
-
 	}
+	
+	protected ISKAmount getISKperM3(InventoryType oreType,List<? extends ItemWithQuantity> outcome) 
+	{
+		final double unitsPerM3 = 1.0d / oreType.getVolume();
+		final double batchesPerM3 = unitsPerM3 / oreType.getPortionSize();
+
+		final long avgSellPrive = calculateBatchSellPrice( outcome );
+
+		return new ISKAmount( avgSellPrive ).multiplyBy( batchesPerM3 );
+	}	
+	
+	protected long calculateBatchSellPrice(List<? extends ItemWithQuantity> items) 
+	{
+		long batchValue=0;
+		for ( ItemWithQuantity x : items) 
+		{
+			long avgMineralSellPrive = priceCache.getSellPrice( x.getType() ).getAveragePrice();
+
+			batchValue += (  avgMineralSellPrive * x.getQuantity() );
+		}
+		return batchValue;
+	}	
 
 	private final TableCellRenderer tableRenderer =
 		new DefaultTableCellRenderer() {
@@ -446,14 +499,68 @@ public class OreChartComponent extends AbstractComponent
 		
 		splitPane.setDividerLocation( 0.3 );
 		
+		/*
+	private JTextField oreHoldSize = new JTextField("8500");
+	private JComboBox<String> oreChooser = new JComboBox<>();
+	private JComboBox<OreVariant> oreVariantChooser = new JComboBox<>();
+	private JTextField oreHoldValue = new JTextField("0.0");		 
+		 */
+		
+		// setup ore hold panel
+		final JPanel oreHoldPanel = new JPanel();
+		oreHoldPanel.setLayout(new GridBagLayout());
+		
+		oreHoldSize.setColumns( 10 );
+		
 		new GridLayoutBuilder()
-		.add( new VerticalGroup( new Cell( splitPane ) ) )
+		.add(  new HorizontalGroup(
+						 new VerticalGroup( 
+								new HorizontalGroup( 
+										new Cell( "ohLabel", new JLabel("Ore hold size (m3):") ),
+										new Cell( "ohSize" , oreHoldSize )
+						         ), 
+								 new HorizontalGroup( 
+											new Cell( "oreTypeLabel" , new JLabel("Ore type:") ),
+											new Cell( "oreChooser" , oreChooser ) 
+							     ), 
+								 new HorizontalGroup( 
+											new Cell( "oreVariantLabel", new JLabel("Ore variant:") ),
+											new Cell( "oreVariantChooser" , oreVariantChooser ) 
+							     )			 
+						 ),
+						 new Cell( "oreHoldValue" , oreHoldValue.getPanel() ) 
+				 )		     
+		).enableDebugMode().addTo( oreHoldPanel );
+		
+		final List<String> oreNames = refiningData.getOreNames(OreVariant.BASIC);
+		oreChooser.setModel( new DefaultComboBoxModel<>( new Vector<String>( oreNames ) ) );
+		oreChooser.setSelectedItem( oreNames.get(0) );
+		
+		oreVariantChooser.setModel( new DefaultComboBoxModel<>( OreVariant.values() ) );
+		oreVariantChooser.setSelectedItem( OreVariant.BASIC );
+		
+		oreChooser.addActionListener( new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				refresh();
+			}
+		} );		
+		
+		oreVariantChooser.addActionListener( new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				refresh();
+			}
+		} );	
+		
+		new GridLayoutBuilder()
+		.add( new VerticalGroup( new Cell(oreHoldPanel).noResize() , new Cell( splitPane ) ) )
 		.addTo( result );
 		
 		
 		return result;
 	}
-
+	
 	private final class MineralPrice {
 
 		public final PriceInfo price;
@@ -485,8 +592,7 @@ public class OreChartComponent extends AbstractComponent
 
 			prices.clear();
 			for ( String mineralName  : OreRefiningData.getMineralNames() ) {
-				final InventoryType type=
-					dataModel.getInventoryTypeByName( mineralName );
+				final InventoryType type= dataModel.getInventoryTypeByName( mineralName );
 				prices.add( new MineralPrice( priceCache.getSellPrice( type ) ) );
 			}
 			modelDataChanged();

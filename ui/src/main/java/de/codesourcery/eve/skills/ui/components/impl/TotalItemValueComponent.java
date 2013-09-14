@@ -83,12 +83,10 @@ public class TotalItemValueComponent<X> extends AbstractComponent
 
     public void setItems(Collection<X> items)
     {
-
         long amount = 0;
         for (X item : items)
         {
             final int quantity = this.dataProvider.getQuantity( item );
-
             final ISKAmount ppU = this.dataProvider.getPricePerUnit( item );
 
             amount += ppU.multiplyBy( quantity ).toLong();

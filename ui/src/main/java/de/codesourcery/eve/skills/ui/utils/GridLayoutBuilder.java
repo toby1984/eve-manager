@@ -100,7 +100,7 @@ public class GridLayoutBuilder
 		 * @param height layout hints, may be <code>null</code> or empty.
 		 * @param hints
 		 */
-		public void add(java.awt.Component comp,int x , int y , int width , int height,EnumSet<LayoutHints> hints);
+		public void add(ILayoutElement elem, java.awt.Component comp,int x , int y , int width , int height,EnumSet<LayoutHints> hints);
 	}
 	
 	protected IContainer wrap( final java.awt.Container targetContainer ) {
@@ -108,11 +108,11 @@ public class GridLayoutBuilder
 		return new IContainer() {
 
 			@Override
-			public void add(Component comp, int x, int y, int width, int height,EnumSet<LayoutHints> hints)
+			public void add(ILayoutElement elem,Component comp, int x, int y, int width, int height,EnumSet<LayoutHints> hints)
 			{
-
-				if ( debugMode ) {
-					System.out.println(" x="+x+" , y= "+y+" , width="+width+", height="+height+", hints="+hints+", component="+comp);
+				if ( debugMode ) 
+				{
+					System.out.println(" x="+x+" , y= "+y+" , width="+width+", height="+height+", hints="+hints+", component="+elem);
 				}
 				
 				final ConstraintsBuilder builder = 
@@ -153,6 +153,7 @@ public class GridLayoutBuilder
 		private final java.awt.Component component;
 		private ILayoutElement parent;
 		
+		public final String name;
 		private final int width;
 		private final int height;
 		private final EnumSet<LayoutHints> hints;
@@ -165,25 +166,43 @@ public class GridLayoutBuilder
 			this( component , 1 , 1 );
 		}
 		
-		public Cell(Component component,EnumSet<LayoutHints> hints) {
-			this( component , 1 , 1 ,  hints.toArray(new LayoutHints[0]) );
+		public Cell(String name , Component component,EnumSet<LayoutHints> hints) {
+			this( component , 1 , 1 ,  name, hints.toArray(new LayoutHints[0]) );
 		}
 		
+		public Cell(Component component,EnumSet<LayoutHints> hints) {
+			this( component , 1 , 1 ,  null, hints.toArray(new LayoutHints[0]) );
+		}
+		
+		public Cell(String name , Component component,LayoutHints... hints) {
+			this( component , 1 , 1 , name , hints );
+		}		
+		
 		public Cell(Component component,LayoutHints... hints) {
-			this( component , 1 , 1 , hints );
+			this( component , 1 , 1 , null, hints );
 		}
 		
 		public Cell(int width,int height) {
 			this(null,width,height);
 		}
 		
-		public Cell(Component component,int width,int height) {
-			this( component ,width , height , (LayoutHints[]) null );
+		public Cell(String name , Component component,int width,int height) {
+			this( component ,width , height , name , (LayoutHints[]) null );
 		}
 		
-		public Cell(Component component,int width,int height,LayoutHints... hints) {
+		public Cell(Component component,int width,int height) {
+			this( component ,width , height , null , (LayoutHints[]) null );
+		}
+		
+		public Cell noResize() {
+			hints.add( LayoutHints.NO_RESIZING );
+			return this;
+		}
+		
+		public Cell(Component component,int width,int height,String name,LayoutHints... hints) {
 			this.component = component;
 			this.width = width;
+			this.name = name;
 			this.height = height;
 			if ( ArrayUtils.isEmpty( hints ) ) {
 				this.hints = EnumSet.noneOf( LayoutHints.class );
@@ -196,7 +215,7 @@ public class GridLayoutBuilder
 		@Override
 		public void addToContainer(IContainer container,int x,int y,int width,int height)
 		{
-			container.add( component, x , y , width , height , hints );
+			container.add( this, component, x , y , width , height , hints );
 		}
 
 		@Override
@@ -216,6 +235,11 @@ public class GridLayoutBuilder
 
 		@Override
 		public void setParent(ILayoutElement parent) { this.parent = parent; }
+		
+		@Override
+		public String toString() {
+			return name != null ? name : component.toString();
+		}
 		
 	}
 	

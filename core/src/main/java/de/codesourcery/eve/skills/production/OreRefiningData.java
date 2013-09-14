@@ -43,27 +43,27 @@ import de.codesourcery.eve.skills.db.datamodel.Station;
 public class OreRefiningData
 {
 	private static final List<String> MINERAL_NAMES;
-	
+
 	private final IStaticDataModel dataModel;
 	private SortedMap<String,List<ImmutableItemWithQuantity>> oresByName=null;
 	private SortedMap<String , RefiningOutcome> refiningOutcomes;
 	private List<String> basicOreNames;
-	
+
 	static 
 	{
 		MINERAL_NAMES = new ArrayList<String>();
 		MINERAL_NAMES.addAll( 
-			Arrays.asList( 
-				new String[] { 
-					"Tritanium" , 
-					"Pyerite",
-					"Mexallon",
-					"Isogen",
-					"Nocxium" ,
-					"Zydrine",
-					"Megacyte",
-					"Morphite"}
-		));
+				Arrays.asList( 
+						new String[] { 
+								"Tritanium" , 
+								"Pyerite",
+								"Mexallon",
+								"Isogen",
+								"Nocxium" ,
+								"Zydrine",
+								"Megacyte",
+						"Morphite"}
+						));
 	}	
 
 	public OreRefiningData(IStaticDataModel dataModel) {
@@ -73,15 +73,15 @@ public class OreRefiningData
 		this.dataModel = dataModel;
 		setup();
 	}
-	
+
 	public static boolean isMineral(InventoryType t) {
 		return MINERAL_NAMES.contains( t.getName() );
 	}
-	
+
 	public static List<String> getMineralNames() {
 		return Collections.unmodifiableList( MINERAL_NAMES );
 	}
-	
+
 	/**
 	 * Desired ore variant to be used
 	 * by {@link RefiningCalculator#reverseRefine(List, ICharacter, Station, float)}.
@@ -146,18 +146,18 @@ public class OreRefiningData
 				return 1.1d;
 			}
 		};
-		
+
 		protected abstract String getOreVariantName(RefiningOutcome outcome);
-		
+
 		protected InventoryType getOreType(IStaticDataModel dataModel , RefiningOutcome outcome) {
 			return dataModel.getInventoryTypeByName( getOreVariantName( outcome ) );
 		}
-		
+
 		public abstract String getDisplayName();
 
 		public abstract double  getYieldModifier();
 	}
-	
+
 
 	/**
 	 * Holds data about the refining outcome
@@ -167,10 +167,10 @@ public class OreRefiningData
 	 */
 	public final class RefiningOutcome {
 
-		protected final InventoryType basicType;
-		
+		protected final InventoryType[] oreTypes;
+
 		protected String[] ores;
-		
+
 		protected int trit;
 		protected int pyerite;
 		protected int mex;
@@ -179,38 +179,52 @@ public class OreRefiningData
 		protected int zyd;
 		protected int meg;
 		protected int mor;
-		
-		public RefiningOutcome(InventoryType basicType) 
+
+		public RefiningOutcome(InventoryType[] oreTypes) 
 		{
-			if ( basicType == null ) {
-				throw new IllegalArgumentException("basicType cannot be NULL");
+			if (oreTypes == null) {
+				throw new IllegalArgumentException("oreTypes must not be NULL");
 			}
-			this.basicType = basicType;
+			this.oreTypes = oreTypes;
+		}
+		
+		public InventoryType getType(OreVariant variant) 
+		{
+			switch(variant) {
+				case BASIC:
+					return oreTypes[0];
+				case MEDIUM:
+					return oreTypes[1];
+				case IMPROVED:
+					return oreTypes[2];
+				default:
+					throw new IllegalArgumentException("Unhandled switch/case: "+variant);
+			}
+		}
+		
+		private InventoryType getBasicType() {
+			return getType(OreVariant.BASIC);
 		}
 
-		public InventoryType getBasicType() {
-			return basicType;
-		}
-		
 		@Override
 		public boolean equals(Object obj)
 		{
 			if ( obj instanceof RefiningOutcome ) {
-				return this.basicType.getId().equals( ((RefiningOutcome) obj).basicType.getId() );
+				return getBasicType().getId().equals( ((RefiningOutcome) obj).getBasicType().getId() );
 			}
 			return false; 
 		}
-		
+
 		public boolean yields(InventoryType mineral) {
 			return getMineralYieldFor( mineral , OreVariant.BASIC) > 0 ; 
 		}
-		
+
 		@Override
 		public int hashCode()
 		{
-			return this.basicType.getId().hashCode(); 
+			return getBasicType().getId().hashCode(); 
 		}
-		
+
 		/**
 		 * Returns the outcome of refining one batch
 		 * of a given ore.
@@ -233,7 +247,7 @@ public class OreRefiningData
 			}
 
 			final List<ImmutableItemWithQuantity> result =
-				new ArrayList<ImmutableItemWithQuantity> ();
+					new ArrayList<ImmutableItemWithQuantity> ();
 
 			if ( trit != 0 ) result.add( new ImmutableItemWithQuantity( dataModel.getInventoryTypeByName( "Tritanium" ) ,  trit , bonus ) );
 			if ( pyerite != 0 ) result.add( new ImmutableItemWithQuantity( dataModel.getInventoryTypeByName( "Pyerite" ) ,  pyerite, bonus ) );
@@ -246,21 +260,21 @@ public class OreRefiningData
 
 			return result;
 		}
-		
+
 		public int getMineralYieldFor(InventoryType mineral, OreVariant oreVariant) {
 			if ( mineral == null ) {
 				throw new IllegalArgumentException("mineral cannot be NULL");
 			}
 			return getMineralYieldFor( mineral.getName(), oreVariant );
 		}
-		
+
 		public int getMineralYieldFor(String mineralName,OreVariant oreVariant) {
-			
+
 			if ( StringUtils.isBlank(mineralName) ) {
 				throw new IllegalArgumentException(
 						"mineral name cannot be blank.");
 			}
-			
+
 			int result;
 			if ( "Tritanium".equals( mineralName) ) {
 				result = trit;
@@ -281,7 +295,7 @@ public class OreRefiningData
 			} else {
 				throw new RuntimeException("Unreachable code reached.");
 			}
-			
+
 			return (int) Math.floor( result*oreVariant.getYieldModifier() );
 		}
 
@@ -303,6 +317,23 @@ public class OreRefiningData
 		public String getBasicVariantName()
 		{
 			return ores[0];
+		}
+		
+		public String getVariantName(OreVariant variant) 
+		{
+			if (variant == null) {
+				throw new IllegalArgumentException("variant must not be NULL");
+			}
+			switch(variant) {
+				case BASIC:
+					return getBasicVariantName();
+				case MEDIUM:
+					return getMediumVariantName();
+				case IMPROVED:
+					return getImprovedVariantName();
+				default:
+					throw new IllegalArgumentException("Unhandled switch/case: "+variant);
+			}
 		}
 
 		/**
@@ -342,14 +373,41 @@ public class OreRefiningData
 		return outcome.getBasicVariantName();
 	}
 
+	public List<String> getOreNames(OreVariant variant) {
+
+		final Set<RefiningOutcome> tmp = new HashSet<RefiningOutcome> ( this.refiningOutcomes.values() );
+
+		final List<String> result = new ArrayList<String>();
+		for ( RefiningOutcome outcome : tmp )
+		{
+			result.add( outcome.getVariantName( variant ) );
+		}
+		return result;
+	}
+	
+	public InventoryType getVariantType(String oreName,OreVariant variant) 
+	{
+		final Set<RefiningOutcome> tmp = new HashSet<RefiningOutcome> ( this.refiningOutcomes.values() );
+
+		for ( RefiningOutcome outcome : tmp )
+		{
+			for (OreVariant v : OreVariant.values() ) {
+				if ( oreName.equals( outcome.getVariantName( v ) ) ) 
+				{
+					return outcome.getType( variant );
+				}
+			}
+		}
+		throw new IllegalArgumentException("Unknown ore name: >"+oreName+"<");
+	}
+
 	public List<String> getAllBasicOreNames() {
-		
+
 		if ( basicOreNames == null ) 
 		{
 			// gather unique outcomes
-			final Set<RefiningOutcome> tmp =
-				new HashSet<RefiningOutcome> ( this.refiningOutcomes.values() );
-			
+			final Set<RefiningOutcome> tmp = new HashSet<RefiningOutcome> ( this.refiningOutcomes.values() );
+
 			final List<String> result = new ArrayList<String>();
 			for ( RefiningOutcome outcome : tmp )
 			{
@@ -359,7 +417,7 @@ public class OreRefiningData
 		}
 		return basicOreNames;
 	}
-	
+
 	private static final class ImmutableItemWithQuantity extends ItemWithQuantity {
 
 		public ImmutableItemWithQuantity(InventoryType type,
@@ -383,9 +441,12 @@ public class OreRefiningData
 
 	private void addOutcome(String[] oreNames, 
 			int trit, int pyerite,int mex, int iso, int noc, int zyd, int meg,int mor) 
-	{
-		final RefiningOutcome result =
-			new RefiningOutcome( this.dataModel.getInventoryTypeByName( oreNames[0] ) );
+	{ 
+		final InventoryType[] types = new InventoryType[ oreNames.length ];
+		for (int i = 0 ; i < oreNames.length ; i++ ) {
+			types[i] = this.dataModel.getInventoryTypeByName( oreNames[i] );
+		}
+		final RefiningOutcome result = new RefiningOutcome( types );
 
 		result.ores = oreNames;
 		result.trit = trit;
@@ -422,10 +483,10 @@ public class OreRefiningData
 		addOutcome( new String[]{ "Arkonor" , "Crimson Arkonor" , "Prime Arkonor" }, 10000,0,0,0,0,166,333,0);
 		addOutcome( new String[]{ "Mercoxit" , "Magma Mercoxit" , "Vitreous Mercoxit" } , 0,0,0,0,0,0,0,530);
 	}
-	
-	public List<? extends ItemWithQuantity> getRefiningOutcome(String oreName) {
-		final List<? extends ItemWithQuantity> result=
-			oresByName.get( oreName );
+
+	public List<? extends ItemWithQuantity> getRefiningOutcome(String oreName) 
+	{
+		final List<? extends ItemWithQuantity> result= oresByName.get( oreName );
 
 		if ( result == null ) {
 			throw new IllegalArgumentException("Cannot determine refining outcome of ore '"+oreName+"'");
@@ -436,21 +497,21 @@ public class OreRefiningData
 	public RefiningOutcome getRawOutcome(String ore) {
 		return refiningOutcomes.get( ore );
 	}
-	
+
 	public List<RefiningOutcome> getOresThatYield(InventoryType mineral) {
-		
+
 		final List<RefiningOutcome> result =
-			new ArrayList<RefiningOutcome>();
-		
+				new ArrayList<RefiningOutcome>();
+
 		for ( RefiningOutcome ore : this.refiningOutcomes.values() ) {
 			if ( ore.yields( mineral ) ) {
 				result.add( ore );
 			}
 		}
-		
+
 		return result;
 	}
-	
+
 	/**
 	 * Returns the minerals that are refined from
 	 * some ore (assuming perfect skills , standing and refining yield).
