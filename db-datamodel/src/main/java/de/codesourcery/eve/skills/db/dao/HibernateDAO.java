@@ -18,8 +18,6 @@ package de.codesourcery.eve.skills.db.dao;
 import java.io.Serializable;
 import java.util.List;
 
-import javax.swing.SwingUtilities;
-
 import org.apache.log4j.Logger;
 import org.hibernate.Criteria;
 import org.hibernate.Session;
@@ -28,20 +26,19 @@ import org.hibernate.Transaction;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 public class HibernateDAO<T, PK extends Serializable> implements IReadOnlyDAO<T, PK> , InitializingBean
 {
-	
 	private static final Logger log = Logger.getLogger(HibernateDAO.class);
 	
 	private final Class<T> clasz;
 	
 	private static final ThreadLocal<Session> currentSession = new ThreadLocal<Session>();
 
-	private final TransactionTemplate template =
-		new TransactionTemplate();
+	private final TransactionTemplate template = new TransactionTemplate();
 	
 	private SessionFactory sessionFactory;
 	
@@ -53,16 +50,8 @@ public class HibernateDAO<T, PK extends Serializable> implements IReadOnlyDAO<T,
 		this.sessionFactory = factory;
 	}
 
-	private Session getCurrentSession() {
-		
-//		if ( ! SwingUtilities.isEventDispatchThread() ) 
-//		{
-//			final String msg = "Internal error - Thread "+
-//			Thread.currentThread()+" [ "+Thread.currentThread().getName()+" ] tries "+
-//			" to obtain a Hibernate session but it is not the EDT ?";
-//			log.error("getCurrentSession(): "+msg, new Exception() );
-//			throw new RuntimeException( msg );
-//		}
+	private Session getCurrentSession() 
+	{
 		if ( currentSession.get() == null ) {
 			currentSession.set( sessionFactory.openSession() );
 		}
@@ -135,6 +124,4 @@ public class HibernateDAO<T, PK extends Serializable> implements IReadOnlyDAO<T,
 		}
 		return result.get(0);
 	}
-
-
 }

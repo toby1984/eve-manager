@@ -15,10 +15,16 @@
  */
 package de.codesourcery.eve.skills.ui.components.impl;
 
+import java.awt.Font;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import javax.annotation.Resource;
 import javax.swing.AbstractAction;
@@ -31,10 +37,16 @@ import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreePath;
 
+import org.apache.commons.lang.StringUtils;
+
 import de.codesourcery.eve.skills.datamodel.ICharacter;
 import de.codesourcery.eve.skills.datamodel.IStaticDataModel;
 import de.codesourcery.eve.skills.datamodel.ItemWithQuantity;
+import de.codesourcery.eve.skills.datamodel.Prerequisite;
+import de.codesourcery.eve.skills.db.datamodel.AttributeCategory;
 import de.codesourcery.eve.skills.db.datamodel.InventoryType;
+import de.codesourcery.eve.skills.db.datamodel.ItemWithAttributes;
+import de.codesourcery.eve.skills.db.datamodel.ItemAttribute;
 import de.codesourcery.eve.skills.db.datamodel.MarketGroup;
 import de.codesourcery.eve.skills.ui.components.AbstractComponent;
 import de.codesourcery.eve.skills.ui.components.ComponentWrapper;
@@ -43,6 +55,7 @@ import de.codesourcery.eve.skills.ui.components.ISelectionProvider;
 import de.codesourcery.eve.skills.ui.model.ITreeNode;
 import de.codesourcery.eve.skills.ui.model.impl.MarketGroupTreeModelBuilder;
 import de.codesourcery.eve.skills.ui.utils.PopupMenuBuilder;
+import de.codesourcery.utils.StringTablePrinter;
 
 
 public class ItemBrowserComponent extends AbstractComponent implements ICharacterSelectionProviderAware {
@@ -53,8 +66,7 @@ public class ItemBrowserComponent extends AbstractComponent implements ICharacte
 	private MarketGroupTreeModelBuilder treeModelBuilder;
 	private final JTree itemTree = new JTree();
 	
-	private final JTextArea itemDetails =
-		new JTextArea( 20 , 60 ); 
+	private final JTextArea itemDetails = new JTextArea( 20 , 60 ); 
 	
 	private ISelectionProvider<ICharacter> selectionProvider;
 	
@@ -62,6 +74,9 @@ public class ItemBrowserComponent extends AbstractComponent implements ICharacte
 	{
 		super();
 		itemTree.setRootVisible( false );
+		
+	  	final Font currFont = itemDetails.getFont();
+    	itemDetails.setFont(new Font("monospaced", currFont.getStyle(), currFont.getSize()));		
 	}
 	
 	@Override
@@ -85,15 +100,101 @@ public class ItemBrowserComponent extends AbstractComponent implements ICharacte
 	
 	protected String getDetailsFor(InventoryType type) 
 	{
-		final StringBuffer result =
-			new StringBuffer();
+		final StringBuffer result = new StringBuffer();
 		
-		final DecimalFormat VOLUME_FORMAT =
-			new DecimalFormat("###,###,##0.0#");
+		final DecimalFormat VOLUME_FORMAT = new DecimalFormat("###,###,##0.0#");
 	
 		result.append( type.getDescription() );
-		result.append("\n\nVolume: "+VOLUME_FORMAT.format( type.getVolume() )+" m3" );
+		result.append("\n\nVolume: "+VOLUME_FORMAT.format( type.getVolume() )+" m3\n\n" );
+		
+		final ItemWithAttributes item = dataModel.getItem( type );
+		
+		List<Prerequisite> requiredSkills = item.getRequiredSkills( dataModel );
+		if ( ! requiredSkills.isEmpty() ) 
+		{
+			result.append("Required skills:\n\n");
+			
+			StringTablePrinter printer = new StringTablePrinter("Skill","Level","Your level");
+			ICharacter currentChar = selectionProvider.getSelectedItem();
+			for (Iterator<Prerequisite> it = requiredSkills.iterator(); it.hasNext();) 
+			{
+				final Prerequisite prerequisite = (Prerequisite) it.next();
+				String yourLevel = "--";
+				if ( currentChar != null ) {
+					yourLevel = Integer.toString( currentChar.getCurrentLevel( prerequisite.getSkill() ) );
+				}
+				printer.add( prerequisite.getSkill().getName() , Integer.toString( prerequisite.getRequiredLevel() ) , yourLevel );
+			}
+			result.append( printer );
+		}
+		
+		final Map<AttributeCategory, List<ItemAttribute>> allCategories = item.getAttributes().getAttributesByCategory();
+		final List<AttributeCategory> categories = new ArrayList<>(allCategories.keySet());
+		Collections.sort( categories , new Comparator<AttributeCategory>() {
+
+			@Override
+			public int compare(AttributeCategory o1, AttributeCategory o2) {
+				return o1.getName().compareTo(o2.getName());
+			}
+		});
+		
+		for (Iterator<AttributeCategory> it = categories.iterator(); it.hasNext();) 
+		{
+			final AttributeCategory cat = (AttributeCategory) it.next();
+			result.append( toString( cat , allCategories.get(cat) ) );	
+			if (it.hasNext()) {
+				result.append("\n");
+			}
+		}
 		return result.toString();
+	}
+	
+	private String toString(AttributeCategory cat, List<ItemAttribute> attrs) {
+		
+		int maxNameLen = 0;
+		for ( ItemAttribute attr : attrs ) {
+			maxNameLen = Math.max(maxNameLen, getAttributeDisplayName( attr ).length() );
+		}
+		String result = "\n============\n"+
+		       cat.getName()+
+		       "\n============";
+		       
+		final List<ItemAttribute> sorted = new ArrayList<>(attrs);
+		Collections.sort( sorted , new Comparator<ItemAttribute>() {
+
+			@Override
+			public int compare(ItemAttribute o1, ItemAttribute o2) {
+				return getAttributeDisplayName( o1).compareTo( getAttributeDisplayName( o2 ) );
+			}
+		} );
+		for (Iterator<ItemAttribute> it = sorted.iterator(); it.hasNext();) {
+			ItemAttribute itemAttribute = it.next();
+			result += "\n"+StringUtils.rightPad( getAttributeDisplayName(itemAttribute) , maxNameLen)+" : "+getAttributeDisplayValue(itemAttribute);
+		}       
+		return result;
+	}
+	
+	private String getAttributeDisplayName(ItemAttribute attr) 
+	{
+		String displayName = attr.getType().getDisplayName();
+		String attributeName = attr.getType().getAttributeName();
+		if ( displayName == null ) {
+			return attributeName;
+		}
+		return displayName+" ("+attributeName+")";
+	}
+	
+	private String getAttributeDisplayValue(ItemAttribute attr) 
+	{
+		String sValue = "<no value?>";
+		if ( attr.getFloatValue() != null && attr.getIntValue() != null ) {
+			sValue = "float: "+attr.getFloatValue()+" | int: "+attr.getIntValue();
+		} else if ( attr.getFloatValue() != null ) {
+			sValue = Double.toString( attr.getFloatValue() );
+		} else if ( attr.getIntValue() != null ) {
+			sValue = Integer.toString( attr.getIntValue() );
+		}
+		return sValue;
 	}
 	
 	@Override

@@ -23,6 +23,20 @@ public class Prerequisite {
 	private Skill skill;
 	private int requiredLevel;
 	
+	public Prerequisite() {
+	}
+	
+	public Prerequisite(Skill skill, int requiredLevel) {
+		if ( skill == null ) {
+			throw new IllegalArgumentException("skill must not be NULL");
+		}
+		if ( requiredLevel < 0 ) {
+			throw new IllegalArgumentException("requiredLevel must not be < 0");
+		}
+		this.skill = skill;
+		this.requiredLevel = requiredLevel;
+	}
+	
 	@Override
 	public String toString() {
 		if ( skill == null ) {

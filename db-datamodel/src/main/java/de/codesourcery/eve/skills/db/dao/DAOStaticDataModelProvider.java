@@ -31,6 +31,7 @@ import de.codesourcery.eve.skills.db.datamodel.Faction;
 import de.codesourcery.eve.skills.db.datamodel.InventoryCategory;
 import de.codesourcery.eve.skills.db.datamodel.InventoryGroup;
 import de.codesourcery.eve.skills.db.datamodel.InventoryType;
+import de.codesourcery.eve.skills.db.datamodel.ItemWithAttributes;
 import de.codesourcery.eve.skills.db.datamodel.MarketGroup;
 import de.codesourcery.eve.skills.db.datamodel.NPCCorporation;
 import de.codesourcery.eve.skills.db.datamodel.Race;
@@ -55,6 +56,8 @@ public class DAOStaticDataModelProvider implements IStaticDataModelProvider {
 	private INPCCorporationDAO npcCorporationDAO;
 	private IAssemblyLineDAO assemblyLineDAO;
 	private IMarketGroupDAO marketGroupDAO;
+	private IItemAttributesDAO itemDAO;
+	private IItemAttributeTypeDAO itemAttributeTypeDAO;
 
 	private final IStaticDataModel dataModel = new IStaticDataModel() {
 
@@ -278,6 +281,11 @@ public class DAOStaticDataModelProvider implements IStaticDataModelProvider {
 			return inventoryTypeDAO.getInventoryTypes( group );
 		}
 
+		@Override
+		public ItemWithAttributes getItem(InventoryType type) {
+			return itemDAO.getAttributes( type );
+		}
+
 	};
 	
 	@Override
@@ -352,5 +360,12 @@ public class DAOStaticDataModelProvider implements IStaticDataModelProvider {
 	public void setMarketGroupDAO(IMarketGroupDAO marketGroupDAO) {
 		this.marketGroupDAO = marketGroupDAO;
 	}
+	
+	public void setItemDAO(IItemAttributesDAO itemDAO) {
+		this.itemDAO = itemDAO;
+	}
 
+	public void setItemAttributeTypeDAO(IItemAttributeTypeDAO itemAttributeTypeDAO) {
+		this.itemAttributeTypeDAO = itemAttributeTypeDAO;
+	}
 }

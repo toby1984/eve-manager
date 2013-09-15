@@ -36,5 +36,6 @@
 	 <mapping class="de.codesourcery.eve.skills.db.datamodel.AssemblyLine"/>
      <mapping class="de.codesourcery.eve.skills.db.datamodel.EveName" />
      <mapping class="de.codesourcery.eve.skills.db.datamodel.NPCCorporation" /> 
+     <mapping class="de.codesourcery.eve.skills.db.datamodel.ItemAttributeType" />      
    </session-factory>
 </hibernate-configuration>

@@ -55,7 +55,7 @@
       </property>
 
       <property name="jdbcUrl">
-         <value>jdbc:h2:/home/tgierke/workspace/eve-manager/ui/db_export/eve</value>
+         <value>jdbc:h2:/home/tobi/schulungs_workspace/eve-manager/ui/db_export/eve</value>
       </property>
       
       <property name="initialPoolSize" value="10" />
@@ -104,6 +104,8 @@
          <value>de.codesourcery.eve.skills.db.datamodel.StationType</value>   
          <value>de.codesourcery.eve.skills.db.datamodel.StationOperatonServices</value>
          <value>de.codesourcery.eve.skills.db.datamodel.TypeMaterial</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.ItemAttributeType</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.ItemAttributeTypeMapping</value>
      </list>
    </property>
  </bean>   
@@ -142,6 +144,8 @@
          <value>de.codesourcery.eve.skills.db.datamodel.EveName</value>
          <value>de.codesourcery.eve.skills.db.datamodel.NPCCorporation</value>
          <value>de.codesourcery.eve.skills.db.datamodel.TypeMaterial</value>
+         <value>de.codesourcery.eve.skills.db.datamodel.ItemAttributeType</value>   
+         <value>de.codesourcery.eve.skills.db.datamodel.ItemAttributeTypeMapping</value>               
          <!--  still broken
          <value>de.codesourcery.eve.skills.db.datamodel.StationType</value>
          <value>de.codesourcery.eve.skills.db.datamodel.StationOperatonServices</value> 

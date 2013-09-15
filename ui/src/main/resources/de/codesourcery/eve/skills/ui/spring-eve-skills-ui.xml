@@ -158,10 +158,12 @@
    	 <property name="corporationDAO" ref="corporation-dao" />
    	 <property name="blueprintTypeDAO" ref="blueprint-type-dao" />   	 
    	 <property name="regionDAO" ref="region-dao" />
-   	 <property name="npcCorporationDAO" ref="npccorp-dao"></property>
-   	 <property name="assemblyLineDAO" ref="assemblyline-dao"></property>
-   	 <property name="inventoryCategoryDAO" ref="inventory-category-dao"></property>
-   	 <property name="marketGroupDAO" ref="marketgroup-dao"></property>
+   	 <property name="npcCorporationDAO" ref="npccorp-dao" />
+   	 <property name="assemblyLineDAO" ref="assemblyline-dao" />
+   	 <property name="inventoryCategoryDAO" ref="inventory-category-dao" />
+   	 <property name="marketGroupDAO" ref="marketgroup-dao" />
+   	 <property name="itemDAO" ref="item-dao" />
+   	 <property name="itemAttributeTypeDAO" ref="item-attribute-type-dao" />
    </bean>
    
       <!-- DAOs -->
@@ -193,6 +195,10 @@
        <property name="transactionManager"><ref local="eve-transaction-manager"/></property>
    </bean>   
    
+   <bean id="item-dao" class="de.codesourcery.eve.skills.db.dao.ItemAttributesDAO">
+       <property name="dataSource" ref="eve-hsql-dataSource" />
+   </bean>  
+   
    <bean id="solarsystem-dao" class="de.codesourcery.eve.skills.db.dao.SolarSystemDAO">
        <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
        <property name="transactionManager"><ref local="eve-transaction-manager"/></property>
@@ -216,6 +222,11 @@
    <bean id="faction-dao" class="de.codesourcery.eve.skills.db.dao.FactionDAO">
        <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
        <property name="transactionManager"><ref local="eve-transaction-manager"/></property>       
+   </bean>
+   
+   <bean id="item-attribute-type-dao" class="de.codesourcery.eve.skills.db.dao.ItemAttributeTypeDAO">
+       <property name="sessionFactory"><ref local="eveSessionFactory"/></property>
+       <property name="transactionManager"><ref local="eve-transaction-manager"/></property>          
    </bean>
    
    <bean id="blueprint-type-dao" class="de.codesourcery.eve.skills.db.dao.BlueprintTypeDAO">
@@ -283,7 +294,9 @@
          <value>de.codesourcery.eve.skills.db.datamodel.AssemblyLine</value>
          <value>de.codesourcery.eve.skills.db.datamodel.EveName</value>
          <value>de.codesourcery.eve.skills.db.datamodel.NPCCorporation</value>
-         <value>de.codesourcery.eve.skills.db.datamodel.TypeMaterial</value>         
+         <value>de.codesourcery.eve.skills.db.datamodel.TypeMaterial</value>  
+         <value>de.codesourcery.eve.skills.db.datamodel.ItemAttributeType</value>        
+         <value>de.codesourcery.eve.skills.db.datamodel.ItemAttributeTypeMapping</value>                 
          <!-- currently broken
          <value>de.codesourcery.eve.skills.db.datamodel.StationType</value>  
          <value>de.codesourcery.eve.skills.db.datamodel.StationOperatonServices</value>

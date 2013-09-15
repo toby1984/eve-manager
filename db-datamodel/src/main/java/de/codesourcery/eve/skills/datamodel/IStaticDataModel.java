@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.springframework.dao.DataRetrievalFailureException;
 
+import de.codesourcery.eve.skills.db.datamodel.ItemWithAttributes;
 import de.codesourcery.eve.skills.db.datamodel.Activity;
 import de.codesourcery.eve.skills.db.datamodel.AssemblyLine;
 import de.codesourcery.eve.skills.db.datamodel.Constellation;
@@ -46,6 +47,9 @@ public interface IStaticDataModel {
 	public SolarSystem getSolarSystem(Long id);
 	
 	public Collection<SolarSystem> getAllSolarSystems();
+	
+	// items
+	public ItemWithAttributes getItem(InventoryType type);
 	
 	// races
 	public Race getRace(Long id);

@@ -33,6 +33,8 @@ import de.codesourcery.eve.skills.db.datamodel.Faction;
 import de.codesourcery.eve.skills.db.datamodel.InventoryGroup;
 import de.codesourcery.eve.skills.db.datamodel.InventoryMetaType;
 import de.codesourcery.eve.skills.db.datamodel.InventoryType;
+import de.codesourcery.eve.skills.db.datamodel.ItemAttributeType;
+import de.codesourcery.eve.skills.db.datamodel.ItemAttributeTypeMapping;
 import de.codesourcery.eve.skills.db.datamodel.MarketGroup;
 import de.codesourcery.eve.skills.db.datamodel.NPCCorporation;
 import de.codesourcery.eve.skills.db.datamodel.Race;
@@ -77,6 +79,10 @@ public class DBConverter {
 		
 		// export races
 		export( Race.class );
+		
+		export( ItemAttributeType.class );
+		
+		export( ItemAttributeTypeMapping.class );
 
 		export( Faction.class );
 
@@ -131,12 +137,12 @@ public class DBConverter {
 	
 	protected void export(Class<?> entity) {
 
-		System.out.println("# Exporting "+entity.getName());
+		System.out.println("\n============\nExporting "+entity.getName()+"\n============");
 
 		// load data
-		System.out.println("Opening MySQL session ...");
+		System.out.print("Opening MySQL session ...");
 		final Session mysqlSession = mysql.openSession();
-		System.out.println("MySQL session created..");
+		System.out.print("created.");
 		
 //		mysqlSession.setFlushMode( FlushMode.MANUAL );
 		
@@ -145,17 +151,18 @@ public class DBConverter {
 		final Criteria criteria = mysqlSession.createCriteria( entity );
 
 		// replicate data
-		System.out.println("Opening HSQL session ...");
+		System.out.print("Opening HSQL session ...");
 		final Session hsqlSession = hsql.openSession();
-		System.out.println("HSQL session created..");
+		System.out.println("created.");
 //		mysqlSession.setFlushMode( FlushMode.MANUAL );
 
 		final Transaction hsqlTransaction = 
 			hsqlSession.beginTransaction();
 		
 		final ScrollableResults data = criteria.scroll();
+		int count = 0;
+		int dotCount = 0;
 		try {
-			int count = 0;
 			while ( data.next() ) {
 				Object loaded = data.get(0);
 //				if ( entity == MarketGroup.class ) {
@@ -163,19 +170,23 @@ public class DBConverter {
 //					System.out.println( group.getId() +" -> "+group.getParent() );
 //				}
 				hsqlSession.replicate( loaded , ReplicationMode.IGNORE );
-				if ( ( ++count % 1 ) == 999 ) { // make sure to adjust <prop key="hibernate.jdbc.batch_size">1000</prop> in config !!
+				if ( ( ++count % 1000 ) == 0 ) { // make sure to adjust <prop key="hibernate.jdbc.batch_size">1000</prop> in config !!
 					hsqlSession.flush();
 					hsqlSession.clear();
 					mysqlSession.flush();
 					mysqlSession.clear();	
-					
-					System.out.println( count );
-					System.out.println( "--------------------" );
+					System.out.print(".");
+					dotCount++;
+					if ( dotCount == 60 ) {
+						System.out.println();
+						dotCount = 0;
+					}
 				}
 			}
 		}
 		finally { 
 			data.close();
+			System.out.println("\nExported "+count+" entries");
 		}
 
 		if ( mysqlTransaction.isActive() ) {
