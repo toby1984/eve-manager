@@ -20,17 +20,24 @@ import java.awt.Component;
 import java.awt.GridBagLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
 
 import javax.annotation.Resource;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import javax.swing.JTree;
+import javax.swing.SwingUtilities;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreePath;
 
 import org.apache.commons.lang.ObjectUtils;
+import org.apache.log4j.Logger;
 
 import de.codesourcery.eve.skills.datamodel.Blueprint;
 import de.codesourcery.eve.skills.datamodel.ICharacter;
@@ -42,10 +49,13 @@ import de.codesourcery.eve.skills.ui.components.AbstractComponent;
 import de.codesourcery.eve.skills.ui.components.IDoubleClickSelectionListener;
 import de.codesourcery.eve.skills.ui.components.ISelectionListener;
 import de.codesourcery.eve.skills.ui.components.ISelectionProvider;
+import de.codesourcery.eve.skills.ui.model.AbstractViewFilter;
 import de.codesourcery.eve.skills.ui.model.ITreeNode;
+import de.codesourcery.eve.skills.ui.model.IViewFilter;
 import de.codesourcery.eve.skills.ui.model.impl.BlueprintTreeModelBuilder;
 import de.codesourcery.eve.skills.ui.utils.PopupMenuBuilder;
 import de.codesourcery.eve.skills.ui.utils.SelectionListenerHelper;
+import de.codesourcery.utils.DelayedMethodInvokerThread;
 
 /**
  * Component that lets the user choose a specific blueprint from
@@ -69,24 +79,104 @@ import de.codesourcery.eve.skills.ui.utils.SelectionListenerHelper;
  */
 public class BlueprintChooserComponent extends AbstractComponent {
 
+	private static final Logger LOG = Logger.getLogger(BlueprintChooserComponent.class);
+	
+	private static final int MIN_NAME_LENGTH = 4;
+	
 	@Resource(name = "datamodel-provider")
 	private IStaticDataModelProvider dataModelProvider;
 
 	@Resource(name="blueprint-library")
 	private IBlueprintLibrary blueprintLibrary;
 
-	private final SelectionListenerHelper<Blueprint> listenerHelper =
-		new SelectionListenerHelper<Blueprint>();
+	private final SelectionListenerHelper<Blueprint> listenerHelper = new SelectionListenerHelper<Blueprint>();
 
 	private final BlueprintTreeModelBuilder treeModelBuilder;
 	private ISelectionProvider<ICharacter>  charProvider;
+	
+	private JTextField byNameTextField = new JTextField();
+	
+	private boolean substringFilterUsed = false;
 
 	private final JTree tree = new JTree();
 	private PopupMenuBuilder popupMenuBuilder;
+	
+	private final DelayedMethodInvokerThread filterThread;
+	
+	public BlueprintChooserComponent() 
+	{
+		filterThread = new DelayedMethodInvokerThread(200) {
 
-	public BlueprintChooserComponent() {
-		this.treeModelBuilder = new BlueprintTreeModelBuilder( this.dataModelProvider );
+			@Override
+			protected void invokeDelayedMethod() throws Exception {
+				SwingUtilities.invokeAndWait( new Runnable() {
+
+					@Override
+					public void run() {
+						nameFilterChanged();
+					}} );
+			}
+			
+		};
+		filterThread.start();
+		
+		byNameTextField.getDocument().addDocumentListener( new DocumentListener() {
+			@Override
+			public void insertUpdate(DocumentEvent e) {  filterThread.eventOccured(); }
+
+			@Override
+			public void removeUpdate(DocumentEvent e) {  filterThread.eventOccured(); }
+
+			@Override
+			public void changedUpdate(DocumentEvent e) {  filterThread.eventOccured(); }
+		});
+		
+		this.treeModelBuilder = new BlueprintTreeModelBuilder( this.dataModelProvider ) 
+		{
+			@Override
+			protected List<InventoryType> getMembers(MarketGroup group) 
+			{
+				final String name = byNameTextField.getText();
+				if (  name != null && name.length() >=  MIN_NAME_LENGTH) {
+					substringFilterUsed = true;
+					return dataModelProvider.getStaticDataModel().getInventoryTypesWithBlueprints( group , name );
+				}
+				return dataModelProvider.getStaticDataModel().getInventoryTypesWithBlueprints( group );
+			}
+			
+			@Override
+			protected IViewFilter<ITreeNode> getViewFilter() 
+			{
+				final IViewFilter<ITreeNode> superFilter = super.getViewFilter();
+				return new AbstractViewFilter<ITreeNode>() {
+
+					@Override
+					public boolean isHiddenUnfiltered(ITreeNode value) 
+					{
+						if ( superFilter.isHidden( value ) ) {
+							return true;
+						}
+						
+						final String name = byNameTextField.getText();
+						if (  name != null && name.length() >=  MIN_NAME_LENGTH) {
+							final Blueprint bp = getSelectedBlueprint( value );
+							return bp != null && ! bp.getName().toLowerCase().contains( name.toLowerCase() );
+						}
+						return false;
+					}
+				};
+			}
+		};
 		this.treeModelBuilder.attach( tree );
+	}
+
+	private void nameFilterChanged() 
+	{
+		final String name = byNameTextField.getText();
+		if (  substringFilterUsed || name != null && name.length() >=  MIN_NAME_LENGTH) 
+		{
+			treeModelBuilder.viewFilterChanged( true , true );
+		}
 	}
 	
 	public void setCharacterProvider(ISelectionProvider<ICharacter>  charProvider) {
@@ -99,7 +189,7 @@ public class BlueprintChooserComponent extends AbstractComponent {
 	@Override
 	protected JPanel createPanel() {
 
-		JPanel panel = new JPanel();
+		final JPanel panel = new JPanel();
 		panel.setLayout( new GridBagLayout() );
 
 		// add tree
@@ -147,7 +237,11 @@ public class BlueprintChooserComponent extends AbstractComponent {
 		} );
 		tree.setCellRenderer(new BlueprintTreeRendererer());		
 
-		panel.add( new JScrollPane( tree ) , constraints().resizeBoth().end() );
+		byNameTextField.setColumns( 10 );
+		
+		panel.add( new JLabel("Filter:"), constraints().x(0).y(0).width(1).height(1).noResizing().anchorCenter().end() );		
+		panel.add( byNameTextField , constraints().x(1).y(0).width(1).height(1).resizeHorizontally().weightX(1).weightY(0).end() );
+		panel.add( new JScrollPane( tree ) , constraints().x(0).y(1).width(2).height(1).resizeBoth().weightX(1).weightY(1).end() );
 		return panel;
 	}
 
@@ -215,7 +309,9 @@ public class BlueprintChooserComponent extends AbstractComponent {
 	}
 
 	@Override
-	protected void disposeHook() {
+	protected void disposeHook() 
+	{
+		this.filterThread.terminate();
 		this.treeModelBuilder.dispose();
 	}
 

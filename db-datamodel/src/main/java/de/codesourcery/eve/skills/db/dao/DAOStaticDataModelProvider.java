@@ -280,12 +280,31 @@ public class DAOStaticDataModelProvider implements IStaticDataModelProvider {
 		public List<InventoryType> getInventoryTypes(MarketGroup group) {
 			return inventoryTypeDAO.getInventoryTypes( group );
 		}
+		
+		@Override
+		public List<InventoryType> getInventoryTypes(MarketGroup group,String itemNamePattern) {
+			return inventoryTypeDAO.getInventoryTypes( group , itemNamePattern );
+		}
+		
+		@Override
+		public List<InventoryType> getInventoryTypesWithBlueprints(MarketGroup group) {
+			return inventoryTypeDAO.getInventoryTypesWithBlueprints( group );
+		}
+		
+		@Override
+		public List<InventoryType> getInventoryTypesWithBlueprints(MarketGroup group,String itemNamePattern) {
+			return inventoryTypeDAO.getInventoryTypesWithBlueprints(group,itemNamePattern);
+		}
 
 		@Override
 		public ItemWithAttributes getItem(InventoryType type) {
 			return itemDAO.getAttributes( type );
 		}
 
+		@Override
+		public List<MarketGroup> getLeafMarketGroups() {
+			return marketGroupDAO.getLeafMarketGroups();
+		}
 	};
 	
 	@Override

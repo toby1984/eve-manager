@@ -41,4 +41,10 @@ public interface IInventoryTypeDAO extends IReadOnlyDAO<InventoryType,Long>{
 	public InventoryType getInventoryTypeByName(String name);
 
 	public List<InventoryType> getInventoryTypes(MarketGroup group);
+	
+	public List<InventoryType> getInventoryTypes(MarketGroup group,String namePattern);
+
+	public List<InventoryType> getInventoryTypesWithBlueprints(MarketGroup group);
+	
+	public List<InventoryType> getInventoryTypesWithBlueprints(MarketGroup group,String itemNamePattern);	
 }

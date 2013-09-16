@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 import org.hibernate.Criteria;
+import org.hibernate.FlushMode;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -53,7 +54,9 @@ public class HibernateDAO<T, PK extends Serializable> implements IReadOnlyDAO<T,
 	private Session getCurrentSession() 
 	{
 		if ( currentSession.get() == null ) {
-			currentSession.set( sessionFactory.openSession() );
+			org.hibernate.classic.Session session = sessionFactory.openSession();
+			 session.setFlushMode( FlushMode.NEVER );
+			currentSession.set( session );
 		}
 		return currentSession.get();
 	}
@@ -95,6 +98,7 @@ public class HibernateDAO<T, PK extends Serializable> implements IReadOnlyDAO<T,
 	protected <X> X execute(HibernateCallback<X> callback) {
 		
 		final Session session = getCurrentSession();
+		
 		final Transaction transaction = session.beginTransaction();
 		boolean success = false;
 		try {
@@ -103,7 +107,9 @@ public class HibernateDAO<T, PK extends Serializable> implements IReadOnlyDAO<T,
 			return result;
 		} finally {
 			if ( success ) {
-				transaction.commit();
+				if ( transaction.isActive() ) {
+					transaction.commit();
+				}
 			} else {
 				transaction.rollback();
 			}

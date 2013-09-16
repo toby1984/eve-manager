@@ -55,6 +55,25 @@ public class DefaultTreeNode implements ITreeNode
     }
 
     @Override
+    public boolean hasChildren() {
+    	return getChildCount() > 0;
+    }
+    
+    @Override
+    public boolean visitInOrder(ITreeNodeVisitor visitor) 
+    {
+    	if ( ! visitor.visit( this ) ) {
+    		return false;
+    	}
+    	for ( ITreeNode child : children ) {
+    		if ( ! child.visitInOrder( visitor ) ) {
+    			return false;
+    		}
+    	}
+    	return true;
+    }
+    
+    @Override
     public void removeChildren()
     {
         children.clear();

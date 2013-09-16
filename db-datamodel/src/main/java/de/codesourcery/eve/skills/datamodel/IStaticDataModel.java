@@ -20,7 +20,6 @@ import java.util.List;
 
 import org.springframework.dao.DataRetrievalFailureException;
 
-import de.codesourcery.eve.skills.db.datamodel.ItemWithAttributes;
 import de.codesourcery.eve.skills.db.datamodel.Activity;
 import de.codesourcery.eve.skills.db.datamodel.AssemblyLine;
 import de.codesourcery.eve.skills.db.datamodel.Constellation;
@@ -28,6 +27,7 @@ import de.codesourcery.eve.skills.db.datamodel.Faction;
 import de.codesourcery.eve.skills.db.datamodel.InventoryCategory;
 import de.codesourcery.eve.skills.db.datamodel.InventoryGroup;
 import de.codesourcery.eve.skills.db.datamodel.InventoryType;
+import de.codesourcery.eve.skills.db.datamodel.ItemWithAttributes;
 import de.codesourcery.eve.skills.db.datamodel.MarketGroup;
 import de.codesourcery.eve.skills.db.datamodel.NPCCorporation;
 import de.codesourcery.eve.skills.db.datamodel.Race;
@@ -107,11 +107,19 @@ public interface IStaticDataModel {
 	
 	public List<InventoryType> getInventoryTypes(MarketGroup group);
 	
+	public List<InventoryType> getInventoryTypes(MarketGroup group,String itemNamePattern);	
+	
+	public List<InventoryType> getInventoryTypesWithBlueprints(MarketGroup group);
+	
+	public List<InventoryType> getInventoryTypesWithBlueprints(MarketGroup group,String itemNamePattern);		
+	
 	public InventoryCategory getInventoryCategory(Long id);
 	
 	public List<InventoryCategory> getInventoryCategories();
 	
 	public List<MarketGroup> getMarketGroups();
+	
+	public List<MarketGroup> getLeafMarketGroups();
 	
 	// blueprints
 	

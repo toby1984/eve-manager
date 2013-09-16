@@ -15,6 +15,10 @@
  */
 package de.codesourcery.eve.skills.db.datamodel;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -22,6 +26,8 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
+
+import org.apache.commons.lang.ObjectUtils;
 
 @Entity
 @Table(name="invMarketGroups")
@@ -60,6 +66,17 @@ public class MarketGroup {
 	public Long getId() {
 		return id;
 	}
+	
+	@Override
+	public boolean equals(Object obj) 
+	{
+		return obj instanceof MarketGroup && ObjectUtils.equals( this.id , ((MarketGroup) obj).id );
+	}
+	
+	@Override
+	public int hashCode() {
+		return id == null ? 0 : id.hashCode();
+	}
 
 	public void setId(Long id) {
 		this.id = id;
@@ -72,6 +89,26 @@ public class MarketGroup {
 	public void setName(String name) {
 		this.name = name;
 	}
+	
+	/**
+	 * Returns the path from a given <code>MarketGroup</code> to it's root
+	 * <code>MarketGroup</code>.
+	 * 
+	 * @param group market group to find path for
+	 * @return path with the first element being the top-level market group
+	 * and the last element being the input <code>MarketGroup</code> 
+	 */	
+	public List<MarketGroup> getPathToRoot() 
+	{
+		final List<MarketGroup> result = new ArrayList<>();
+		MarketGroup current = this;
+		while( current != null ) {
+			result.add( current );
+			current = current.getParent();
+		}
+		Collections.reverse(result);
+		return result;
+	}	
 
 	public MarketGroup getParent() {
 		return parent;
@@ -121,5 +158,4 @@ public class MarketGroup {
 		}
 		return false;
 	}
-	
 }

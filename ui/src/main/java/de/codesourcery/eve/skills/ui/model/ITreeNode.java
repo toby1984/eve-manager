@@ -23,7 +23,6 @@ import javax.swing.tree.TreePath;
 
 public interface ITreeNode extends TreeNode
 {
-
     public List<ITreeNode> getChildren();
 
     public int addChild(ITreeNode n);
@@ -39,6 +38,8 @@ public interface ITreeNode extends TreeNode
     public void removeChildren();
 
     public void setParent(ITreeNode parent);
+    
+    public boolean hasChildren();
 
     public Object getValue();
 
@@ -56,5 +57,11 @@ public interface ITreeNode extends TreeNode
      * @return
      */
     public TreePath getPathToRoot();
-
+    
+    public interface ITreeNodeVisitor {
+    	
+    	public boolean visit(ITreeNode node);
+    }
+    
+    public boolean visitInOrder(ITreeNodeVisitor visitor);
 }

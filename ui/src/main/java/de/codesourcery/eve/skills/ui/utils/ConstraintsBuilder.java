@@ -172,6 +172,10 @@ public final class ConstraintsBuilder {
 	public ConstraintsBuilder anchorWest() {
 		return setAnchor( GridBagConstraints.WEST );
 	}
+	
+	public ConstraintsBuilder anchorCenter() {
+		return setAnchor( GridBagConstraints.CENTER );
+	}	
 
 	public ConstraintsBuilder anchorNorth()
 	{

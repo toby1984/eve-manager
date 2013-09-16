@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -47,6 +48,9 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 
 	public static final Logger log = Logger.getLogger(BlueprintTypeDAO.class);
 
+	// Key is blueprint product's invTypeId
+	private final ConcurrentHashMap<Long,Blueprint> blueprintByProductCache = new ConcurrentHashMap<>();
+	
 	private ISkillTreeDAO skillTreeDAO;
 	private ITypeActivityMaterialsDAO typeActivityMaterialsDAO;
 
@@ -70,13 +74,15 @@ public class BlueprintTypeDAO extends HibernateDAO<BlueprintType,Long> implement
 	}
 
 	@Override
-	public Blueprint getBlueprintByProduct(InventoryType type) {
-		return createBlueprint( getBlueprintTypeFor( type ) );
+	public Blueprint getBlueprintByProduct(InventoryType type) 
+	{
+		Blueprint existing = blueprintByProductCache.get( type.getId() );
+		if ( existing == null ) {
+			existing = createBlueprint( getBlueprintTypeFor( type ) );
+			blueprintByProductCache.putIfAbsent( type.getId() , existing );
+		}
+		return existing;
 	}
-
-	/*
-
-	 */
 
 	public List<ItemWithQuantity> getRefiningOutcome(InventoryType item) {
 

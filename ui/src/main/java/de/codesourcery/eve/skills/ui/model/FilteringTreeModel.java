@@ -436,8 +436,7 @@ public class FilteringTreeModel extends AbstractTreeModel
 		
 		if ( isPathToRootVisible( changedNode ) ) 
 		{
-			fireEvent( EventType.CHANGED , new TreeModelEvent( 
-					this , changedNode.getPathToRoot() ) );
+			fireEvent( EventType.CHANGED , new TreeModelEvent( this , changedNode.getPathToRoot() ) );
 		}
 	}
 	
@@ -448,8 +447,7 @@ public class FilteringTreeModel extends AbstractTreeModel
 		
 		if ( isPathToRootVisible( jobNode ) ) 
 		{
-			fireEvent( EventType.CHANGED , new TreeModelEvent( 
-					this , jobNode.getPathToRoot() ) );
+			fireEvent( EventType.CHANGED , new TreeModelEvent( this , jobNode.getPathToRoot() ) );
 		}
 	}
 
@@ -458,7 +456,6 @@ public class FilteringTreeModel extends AbstractTreeModel
 		System.out.println(">> View filter changed <<");
 		
 		delegate.modelChanged();
-		fireEvent( EventType.STRUCTURE_CHANGED , new TreeModelEvent( 
-				this , ((ITreeNode) getRoot()).getPathToRoot() ) );
+		fireEvent( EventType.STRUCTURE_CHANGED , new TreeModelEvent( this , ((ITreeNode) getRoot()).getPathToRoot() ) );
 	}
 }

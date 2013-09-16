@@ -31,6 +31,7 @@ import de.codesourcery.eve.skills.ui.components.IDoubleClickSelectionListener;
 import de.codesourcery.eve.skills.ui.components.ISelectionListener;
 import de.codesourcery.eve.skills.ui.model.AbstractViewFilter;
 import de.codesourcery.eve.skills.ui.model.ITreeNode;
+import de.codesourcery.eve.skills.ui.model.IViewFilter;
 import de.codesourcery.eve.skills.ui.utils.PopupMenuBuilder;
 import de.codesourcery.eve.skills.ui.utils.SelectionListenerHelper;
 
@@ -56,13 +57,14 @@ import de.codesourcery.eve.skills.ui.utils.SelectionListenerHelper;
  */
 public class BlueprintTreeModelBuilder {
 	
-	private final SelectionListenerHelper<Blueprint> listenerHelper =
-		new SelectionListenerHelper<Blueprint>();
+	private final SelectionListenerHelper<Blueprint> listenerHelper = new SelectionListenerHelper<Blueprint>();
 	
+	private final IStaticDataModelProvider dataModelProvider;
 	private final MarketGroupTreeModelBuilder treeBuilder;
 
 	public BlueprintTreeModelBuilder(final IStaticDataModelProvider dataModelProvider) 
 	{
+		this.dataModelProvider = dataModelProvider;
 		treeBuilder = new MarketGroupTreeModelBuilder( dataModelProvider.getStaticDataModel()) 
 		{
 			@Override
@@ -71,35 +73,61 @@ public class BlueprintTreeModelBuilder {
 				final List<InventoryType> result = new ArrayList<>();
 				
 				// step 1: find all items in this market group
-				final List<InventoryType> candidates = dataModelProvider.getStaticDataModel().getInventoryTypes( group );
+				long time1 = -System.currentTimeMillis();
+				final List<InventoryType> candidates = BlueprintTreeModelBuilder.this.getMembers( group );
+				
+				final long now = System.currentTimeMillis();
+				time1 += now;
+				long time2 = -now;
+				
 				for ( InventoryType item : candidates ) 
 				{
 					final Blueprint  bp;
 					try {
 						bp = dataModelProvider.getStaticDataModel().getBlueprintByProduct( item );
-						result.add( bp.getType().getBlueprintType() );
-					} catch(EmptyResultDataAccessException e) {
+						if ( isVisible( bp ) ) {
+							result.add( bp.getType().getBlueprintType() );
+						}
+					} 
+					catch(EmptyResultDataAccessException e) {
 						// ok, no blueprint available
 					}
 				}
+				time2 += System.currentTimeMillis();
+				// System.out.println("Group "+group.getName()+" : getMembers() took "+time1+" ms , getBlueprintByProduct() took "+time2+" ms");
 				return result;
 			}
 		};
-		treeBuilder.setTreeFilter(  new AbstractViewFilter<ITreeNode>() {
+		treeBuilder.setTreeFilter( getViewFilter() );
+	}
+	
+	protected List<InventoryType> getMembers(MarketGroup group) {
+		return dataModelProvider.getStaticDataModel().getInventoryTypesWithBlueprints( group );
+	}
+	
+	protected boolean isVisible(Blueprint bp) {
+		return true;
+	}
+	
+	public void viewFilterChanged(boolean populateAllTreeNodes,boolean expandAllPaths) {
+		this.treeBuilder.viewFilterChanged( populateAllTreeNodes , expandAllPaths );
+	}
+	
+	protected IViewFilter<ITreeNode> getViewFilter() 
+	{
+		return new AbstractViewFilter<ITreeNode>() {
 
 			@Override
 			public boolean isHiddenUnfiltered(ITreeNode node)
 			{
-				
 				// never hide the root node 
 				// (otherwise the whole tree will always be hidden)
 				if ( node.getParent() == null ) {
 					return false;
 				}
-				
 				return false;
 			}
-		} );
+		};
 	}
 	
 	/**

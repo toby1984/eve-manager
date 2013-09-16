@@ -15,9 +15,17 @@
  */
 package de.codesourcery.eve.skills.db.dao;
 
+import java.util.List;
+
 import de.codesourcery.eve.skills.db.datamodel.MarketGroup;
 
 
 public interface IMarketGroupDAO extends IReadOnlyDAO<MarketGroup,Long> {
 
+	/**
+	 * Returns all market groups that do not have other MarketGroups as children.
+	 * 
+	 * @return
+	 */
+	public List<MarketGroup> getLeafMarketGroups();
 }

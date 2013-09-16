@@ -256,7 +256,7 @@
       </property>
 
       <property name="jdbcUrl">
-        <value>jdbc:h2:/home/tobi/schulungs_workspace/eve-manager/ui/db_export/eve</value>
+        <value>jdbc:h2:/home/tgierke/workspace/eve-manager/ui/db_export/eve</value>
       </property>
       
       <property name="initialPoolSize" value="10" />

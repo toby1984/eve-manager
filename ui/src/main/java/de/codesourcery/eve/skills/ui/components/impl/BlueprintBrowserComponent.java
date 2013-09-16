@@ -97,8 +97,7 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 
 	private JTextField quantity = new JTextField("1");
 	
-	private PopupMenuBuilder popupMenuBuilder =
-		new PopupMenuBuilder();
+	private PopupMenuBuilder popupMenuBuilder = new PopupMenuBuilder();
 
 	private ISelectionProvider<ICharacter> charProvider;
 	private ISelectionListener<ICharacter> selectionListener =  new ISelectionListener<ICharacter>() 
