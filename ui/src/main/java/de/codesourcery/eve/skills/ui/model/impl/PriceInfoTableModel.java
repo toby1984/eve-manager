@@ -24,6 +24,7 @@ import de.codesourcery.eve.skills.datamodel.PriceInfo.Source;
 import de.codesourcery.eve.skills.datamodel.PriceInfo.Type;
 import de.codesourcery.eve.skills.db.datamodel.InventoryType;
 import de.codesourcery.eve.skills.db.datamodel.Region;
+import de.codesourcery.eve.skills.market.IMarketDataProvider;
 import de.codesourcery.eve.skills.market.IPriceInfoStore;
 import de.codesourcery.eve.skills.market.PriceInfoQueryResult;
 import de.codesourcery.eve.skills.ui.model.AbstractTableViewModel;
@@ -51,7 +52,7 @@ public class PriceInfoTableModel extends
     public static final int SELL_PRICE_SOURCE_IDX = 5;
     public static final int SELL_PRICE_TIMESTAMP_IDX = 6;
 
-    private final IPriceInfoStore priceInfoStore;
+    private final IMarketDataProvider priceInfoStore;
 
     private static final Comparator<String> PRICE_COL_COMPARATOR =
             new Comparator<String>() {
@@ -166,7 +167,7 @@ public class PriceInfoTableModel extends
 
     }
 
-    public PriceInfoTableModel(IPriceInfoStore priceInfoStore, Region defaultRegion,
+    public PriceInfoTableModel(IMarketDataProvider priceInfoStore, Region defaultRegion,
             IViewDataModel<TableEntry> model, ISystemClock clock) {
         super( new TableColumnBuilder().add( "Name" ) // 0
                 .add( "Avg. buy price", String.class, PRICE_COL_COMPARATOR ) // 1
@@ -368,8 +369,7 @@ public class PriceInfoTableModel extends
         }
         else
         {
-            row.sellPrice =
-                    info = new PriceInfo( Type.SELL, row.type, Source.USER_PROVIDED );
+            row.sellPrice = info = new PriceInfo( Type.SELL, row.type, Source.USER_PROVIDED );
             info.setRegion( getDefaultRegion() );
         }
 

@@ -20,9 +20,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
+import javax.swing.DefaultCellEditor;
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.table.AbstractTableModel;
 
@@ -30,13 +32,12 @@ import org.apache.commons.lang.ArrayUtils;
 
 public class SpreadSheetTableModel extends AbstractTableModel
 {
-
-	private final List<TableRow> rows =
-		new ArrayList<TableRow>();
+	private final List<TableRow> rows = new ArrayList<TableRow>();
 
 	private final ITableFactory factory;
 
-	public SpreadSheetTableModel(ITableFactory factory) {
+	public SpreadSheetTableModel(ITableFactory factory) 
+	{
 		if ( factory == null ) {
 			throw new IllegalArgumentException("factory cannot be NULL");
 		}
@@ -64,10 +65,10 @@ public class SpreadSheetTableModel extends AbstractTableModel
 
 		};
 		
-		final SpreadSheetTableModel model = 
-			new SpreadSheetTableModel( cellFactory );
+		final SpreadSheetTableModel model =  new SpreadSheetTableModel( cellFactory );
 
 		final JTable table = new JTable( model );
+		
 		table.setFillsViewportHeight( true );
 
 		final JFrame frame = new JFrame("Test");
@@ -87,10 +88,23 @@ public class SpreadSheetTableModel extends AbstractTableModel
 				
 				frame.setVisible( true );
 				
-				model.addRow( new SimpleCell("First row" ) );
+				model.addRow( new SimpleCell("First row" ) {
+					public boolean isEditable() {
+						return true;
+					}
+					
+					public void setValue(Object value) {
+						System.out.println("new value: "+value);
+					}
+				} );
 				model.addRow( new SimpleCell("Second row #1" ) , new SimpleCell("Second row #2" ));
 				model.addRow( new SimpleCell("Third row #1" ) , new SimpleCell("Third row #2" ) , 
 						new SimpleCell("Third row #3" ) );
+				
+				JTextField tf = new JTextField();
+				
+				table.setModel( model );
+				table.setDefaultEditor( ITableCell.class , new DefaultCellEditor(tf)  );	
 			}
 		} );
 
@@ -100,7 +114,8 @@ public class SpreadSheetTableModel extends AbstractTableModel
 		addRow();
 	}
 
-	public void addRow(ITableCell... cells) {
+	public void addRow(ITableCell... cells) 
+	{
 		final TableRow r = factory.createRow( this );
 		if ( ! ArrayUtils.isEmpty( cells ) ) {
 			for ( ITableCell c : cells ) {
@@ -180,7 +195,9 @@ public class SpreadSheetTableModel extends AbstractTableModel
 	@Override
 	public boolean isCellEditable(int rowIndex, int columnIndex)
 	{
-		return getCell( rowIndex , columnIndex ).isEditable();
+		final boolean editable = getCell( rowIndex , columnIndex ).isEditable();
+		System.out.println("cell("+rowIndex+","+columnIndex+") editable: "+editable);
+		return editable;
 	}
 
 	@Override
@@ -200,5 +217,4 @@ public class SpreadSheetTableModel extends AbstractTableModel
 		}
 		return -1;
 	}
-
 }

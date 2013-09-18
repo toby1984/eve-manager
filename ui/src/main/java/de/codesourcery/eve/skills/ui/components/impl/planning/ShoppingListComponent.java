@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.Resource;
 import javax.swing.AbstractAction;
@@ -121,9 +122,6 @@ public class ShoppingListComponent extends AbstractComponent
 
     @Resource(name = "appconfig-provider")
     private IAppConfigProvider configProvider;
-
-    @Resource(name = "priceinfo-store")
-    private IPriceInfoStore priceInfoStore;
 
     @Resource(name = "region-dao")
     private de.codesourcery.eve.skills.db.dao.IRegionDAO regionDAO;
@@ -1098,7 +1096,12 @@ public class ShoppingListComponent extends AbstractComponent
             return false;
         }
 
-        final long newPrice = AmountHelper.parseISKAmount( price.trim() );
+        final long newPrice;
+        try {
+        	newPrice = AmountHelper.parseISKAmount( price.trim() );
+        } catch(Exception e) {
+        	return false;
+        }
 
         PriceInfo buyPrice = getBuyPrice( type );
         if ( buyPrice == null )
@@ -1112,14 +1115,12 @@ public class ShoppingListComponent extends AbstractComponent
         }
         buyPrice.setAveragePrice( newPrice );
         buyPrice.setTimestamp( new EveDate( systemClock ) );
-        priceInfoStore.store( buyPrice );
+        marketDataProvider.store( buyPrice );
         return true;
     }
 
-    private final class MyTableModel extends AbstractTableModel<TableRow> implements
-            IShoppingListManagerListener, IPriceInfoChangeListener
+    private final class MyTableModel extends AbstractTableModel<TableRow> implements IShoppingListManagerListener, IPriceInfoChangeListener
     {
-
         public static final int ITEMTYPE_COL_IX = 0;
         public static final int TOTAL_QTY_COL_IX = 1;
         public static final int PURCHASED_QTY_COL_IX = 2;
@@ -1130,7 +1131,8 @@ public class ShoppingListComponent extends AbstractComponent
 
         private ShoppingList lastSelectedShoppingList;
 
-        public MyTableModel() {
+        public MyTableModel() 
+        {
             super( new TableColumnBuilder().add( "Item" ).add( "Total quantity",
                 Integer.class ).add( "Purchased quantity", Integer.class ).add(
                 "Avg. buy price" ).add( "Purchased ?", Boolean.class ) );
@@ -1334,8 +1336,7 @@ public class ShoppingListComponent extends AbstractComponent
         }
 
         @Override
-        public void priceChanged(IMarketDataProvider caller, Region region,
-                InventoryType type)
+        public void priceChanged(IMarketDataProvider caller, Region region, Set<InventoryType> type)
         {
             refresh();
         }

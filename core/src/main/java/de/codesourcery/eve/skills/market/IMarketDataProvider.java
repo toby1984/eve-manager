@@ -15,10 +15,13 @@
  */
 package de.codesourcery.eve.skills.market;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import de.codesourcery.eve.skills.datamodel.PriceInfo;
+import de.codesourcery.eve.skills.db.dao.IInventoryTypeDAO;
 import de.codesourcery.eve.skills.db.datamodel.InventoryType;
 import de.codesourcery.eve.skills.db.datamodel.Region;
 import de.codesourcery.eve.skills.exceptions.PriceInfoUnavailableException;
@@ -55,8 +58,9 @@ public interface IMarketDataProvider {
 		public void merge(MarketFilter filter,PriceInfoQueryResult result , PriceInfo existing);
 	}
 	
-	public interface IPriceInfoChangeListener {
-		public void priceChanged(IMarketDataProvider caller , Region region , InventoryType type);
+	public interface IPriceInfoChangeListener 
+	{
+		public void priceChanged(IMarketDataProvider caller , Region region , Set<InventoryType> types);
 	}
 
 	public IUpdateStrategy createUpdateStrategy(UpdateMode mode,PriceInfo.Type filterType);
@@ -77,9 +81,7 @@ public interface IMarketDataProvider {
 	 * buy price.	 
 	 * @throws PriceInfoUnavailableException
 	 */
-	public Map<InventoryType ,  PriceInfoQueryResult> getPriceInfos(MarketFilter filter, 
-			IPriceQueryCallback callback,
-			InventoryType... items) throws PriceInfoUnavailableException;
+	public Map<InventoryType ,  PriceInfoQueryResult> getPriceInfos(MarketFilter filter,  IPriceQueryCallback callback, InventoryType... items) throws PriceInfoUnavailableException;
 	
 	/**
 	 * 
@@ -93,9 +95,7 @@ public interface IMarketDataProvider {
 	 * buy price.
 	 * @throws PriceInfoUnavailableException
 	 */
-	public PriceInfoQueryResult getPriceInfo(MarketFilter filter,
-			IPriceQueryCallback callback,InventoryType item) 
-		throws PriceInfoUnavailableException;
+	public PriceInfoQueryResult getPriceInfo(MarketFilter filter, IPriceQueryCallback callback,InventoryType item) throws PriceInfoUnavailableException;
 	
 	public void addStatusCallback(IStatusCallback callback);
 	
@@ -103,14 +103,18 @@ public interface IMarketDataProvider {
 	
 	public void dispose();
 	
-	public void priceInfoChanged(Region r, InventoryType type);
-	
 	public void updatePriceInfo(MarketFilter filter , 
 			List<InventoryType> items,
 			IPriceQueryCallback callback,
 			IUpdateStrategy updateStrategy) throws PriceInfoUnavailableException;
 	
+	public void store(Collection<PriceInfo> info);
+	
+	public void store(PriceInfo info);
+	
 	public void setOfflineMode(boolean yesNo);
+	
+	public Map<Long,InventoryType>  getAllKnownInventoryTypes(Region region,IInventoryTypeDAO dao);
 	
 	public boolean isOfflineMode();
 }

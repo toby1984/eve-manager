@@ -24,7 +24,6 @@ import de.codesourcery.eve.skills.util.IStatusCallback;
 
 public interface IEveCentralClient
 {
-
 	public void setServerURI(String serverURI);
 
 	public String sendRequestToServer(List<NameValuePair> requestParams);

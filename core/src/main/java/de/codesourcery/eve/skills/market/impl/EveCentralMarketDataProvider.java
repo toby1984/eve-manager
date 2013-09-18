@@ -18,10 +18,14 @@ package de.codesourcery.eve.skills.market.impl;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -40,6 +44,7 @@ import org.w3c.dom.Element;
 import de.codesourcery.eve.apiclient.utils.XMLParseHelper;
 import de.codesourcery.eve.skills.datamodel.PriceInfo;
 import de.codesourcery.eve.skills.datamodel.PriceInfo.Type;
+import de.codesourcery.eve.skills.db.dao.IInventoryTypeDAO;
 import de.codesourcery.eve.skills.db.datamodel.InventoryType;
 import de.codesourcery.eve.skills.db.datamodel.Region;
 import de.codesourcery.eve.skills.exceptions.PriceInfoUnavailableException;
@@ -55,7 +60,7 @@ import de.codesourcery.eve.skills.utils.ISystemClock;
 
 public class EveCentralMarketDataProvider extends XMLParseHelper implements IMarketDataProvider , DisposableBean {
 
-	public static final Logger log = Logger.getLogger(EveCentralMarketDataProvider.class);
+	public static final Logger LOG = Logger.getLogger(EveCentralMarketDataProvider.class);
 
 	/**
 	 * Time to wait before retrying 
@@ -65,8 +70,7 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 
 	private ISystemClock systemClock;
 
-	private final List<IPriceInfoChangeListener> listeners =
-		new ArrayList<IPriceInfoChangeListener>();
+	private final List<IPriceInfoChangeListener> listeners = new ArrayList<IPriceInfoChangeListener>();
 
 	private IEveCentralClient eveCentralClient;
 
@@ -74,18 +78,22 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 	
 	private IPriceInfoStore priceInfoStore;
 
+	/**
+	 * key = market filter
+	 * value = Map<Inventory time ID,Unix timestamp of last attempt to fetch price from eve central>
+	 */
+	private final Map<MarketFilter,Map<Long,Long>> unknownPrices = new HashMap<MarketFilter,Map<Long,Long>>(); 	
+
 	protected final class UPDATE_NONE_STRATEGY implements IUpdateStrategy {
 
 		@Override
-		public boolean requiresUpdate(InventoryType item,
-				PriceInfo existingInfo) 
+		public boolean requiresUpdate(InventoryType item,PriceInfo existingInfo) 
 		{
 			return false;
 		}
 
 		@Override
-		public void merge(MarketFilter filter, PriceInfoQueryResult result,
-				PriceInfo existing) {
+		public void merge(MarketFilter filter, PriceInfoQueryResult result,PriceInfo existing) {
 		}
 
 		@Override
@@ -181,8 +189,7 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 		}
 
 		@Override
-		public boolean requiresUpdate(InventoryType item,
-				PriceInfo existingInfo) 
+		public boolean requiresUpdate(InventoryType item, PriceInfo existingInfo) 
 		{
 
 			if ( ! super.requiresUpdate( item,existingInfo ) ) {
@@ -192,11 +199,11 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 			// only try to update data that is either missing
 			// or not provided by the user and outdated
 			
-			if ( log.isDebugEnabled() ) {
+			if ( LOG.isDebugEnabled() ) {
 				if ( existingInfo == null ) {
-					log.debug("requiresUpdate(): No price available for "+item);
+					LOG.debug("requiresUpdate(): No price available for "+item);
 				} else if ( ! existingInfo.isUserProvided() && isOutdated( existingInfo ) ) {
-					log.debug("requiresUpdate(): Price for "+item+" is outdated and not user-provided");
+					LOG.debug("requiresUpdate(): Price for "+item+" is outdated and not user-provided");
 				}
 			}
 			return existingInfo == null || ( ! existingInfo.isUserProvided() && isOutdated( existingInfo ) );
@@ -214,8 +221,7 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 		}
 
 		@Override
-		public boolean requiresUpdate(InventoryType item,
-				PriceInfo existingInfo) 
+		public boolean requiresUpdate(InventoryType item,PriceInfo existingInfo) 
 		{
 			return true;
 		}
@@ -253,8 +259,7 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 		}
 
 		@Override
-		public boolean requiresUpdate(InventoryType item,
-				PriceInfo existingInfo) 
+		public boolean requiresUpdate(InventoryType item,PriceInfo existingInfo) 
 		{
 			if ( ! super.requiresUpdate( item,existingInfo ) ) {
 				return false;
@@ -278,12 +283,7 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 	}
 
 	@Override
-	public PriceInfoQueryResult getPriceInfo(
-			MarketFilter filter, 
-			IPriceQueryCallback callback,
-			InventoryType type
-	) 
-	throws PriceInfoUnavailableException 
+	public PriceInfoQueryResult getPriceInfo(MarketFilter filter,IPriceQueryCallback callback,InventoryType type) throws PriceInfoUnavailableException 
 	{
 		final PriceInfoQueryResult result = getPriceInfos(filter, callback ,  type ).get( type );
 
@@ -332,25 +332,19 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 </type>		 
 	 */
 
-	protected PriceInfoQueryResult getCachedEntry( MarketFilter filter , InventoryType type) {
-		List<PriceInfo> data = priceInfoStore.get( filter, type );
+	protected PriceInfoQueryResult getCachedEntry( MarketFilter filter , InventoryType type) 
+	{
+		final List<PriceInfo> data = priceInfoStore.get( filter, type );
 		return new PriceInfoQueryResult( type , data );
 	}
 
-	protected void storeCacheEntry(PriceInfo entry) {
-		if ( log.isDebugEnabled() ) {
-			log.debug("storeCacheEntry(): entry = "+entry);
+	protected void storeCacheEntry(PriceInfo entry) 
+	{
+		if ( LOG.isDebugEnabled() ) {
+			LOG.debug("storeCacheEntry(): entry = "+entry);
 		}
-		priceInfoStore.store( entry );
+		priceInfoStore.save( entry );
 	}
-
-	/**
-	 * key = market filter
-	 * value = Map<Inventory time ID,Unix timestamp of last attempt to fetch price from eve central>
-	 */
-	private final Map<MarketFilter,Map<Long,Long>> unknownPrices =
-		new HashMap<MarketFilter,Map<Long,Long>>(); 
-
 
 	protected boolean isPriceMissingOnEveCentral( MarketFilter filter,InventoryType type) {
 		final Map<Long, Long> missingItemsById = unknownPrices.get( filter );
@@ -373,8 +367,8 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 
 	protected void rememberPriceMissingOnEveCentral( MarketFilter filter,InventoryType type) {
 
-		if ( log.isDebugEnabled() ) {
-			log.debug("rememberPriceMissingOnEveCentral(): item "+type+" , filter "+filter);
+		if ( LOG.isDebugEnabled() ) {
+			LOG.debug("rememberPriceMissingOnEveCentral(): item "+type+" , filter "+filter);
 		}
 
 		Map<Long, Long> missingItemsById = unknownPrices.get( filter );
@@ -414,8 +408,8 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 	)
 	throws PriceInfoUnavailableException 
 	{
-		if ( log.isDebugEnabled() ) {
-			log.debug("getPriceInfos(): filter = "+filter+", items = "+items);
+		if ( LOG.isDebugEnabled() ) {
+			LOG.debug("getPriceInfos(): filter = "+filter+", items = "+items);
 		}
 
 		if ( ArrayUtils.isEmpty( items ) ) {
@@ -441,8 +435,8 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 			@Override
 			public void run()
 			{
-				if ( log.isDebugEnabled() ) {
-					log.debug("getPriceInfos(): update_strategy = "+updateStrategy);
+				if ( LOG.isDebugEnabled() ) {
+					LOG.debug("getPriceInfos(): update_strategy = "+updateStrategy);
 				}
 
 				for ( InventoryType t : items ) {
@@ -453,56 +447,53 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 					{
 						if ( ! mayQueryAgainForMissingPrice( filter , t ) ) 
 						{
-							if ( log.isDebugEnabled() ) {
-								log.debug("getPriceInfos(): " +
+							if ( LOG.isDebugEnabled() ) {
+								LOG.debug("getPriceInfos(): " +
 										"Price for "+t+" " +
 										"unavailable on eve-central , filter "+filter);
 							}
 							continue;
 						}
 
-						if ( log.isDebugEnabled() ) {
-							log.debug("getPriceInfos(): [ retrying ] " +
+						if ( LOG.isDebugEnabled() ) {
+							LOG.debug("getPriceInfos(): [ retrying ] " +
 									"Price for "+t+" " +
 									"unavailable on eve-central , filter "+filter);
 						}				
 					}
 
-					final PriceInfoQueryResult cached = 
-						getCachedEntry( filter , t );
+					final PriceInfoQueryResult cached =  getCachedEntry( filter , t );
 
 					resultHolder.get().put( t , cached );
 
-					if ( log.isDebugEnabled() ) {
+					if ( LOG.isDebugEnabled() ) {
 
 						if ( cached.isEmpty() ) { 
-							log.debug("getPriceInfos(): [ NOT CACHED ] type = "+t.getId()+" , name = "+t.getName() );
+							LOG.debug("getPriceInfos(): [ NOT CACHED ] type = "+t.getId()+" , name = "+t.getName() );
 						} else {
-							log.debug("getPriceInfos(): [ CACHE HIT ] "+cached );
+							LOG.debug("getPriceInfos(): [ CACHE HIT ] "+cached );
 						}
 					}
 
 					final boolean requiresUpdate;
-					switch ( filter.getOrderType() ) {
+					switch ( filter.getOrderType() ) 
+					{
 						case BUY:
 							requiresUpdate=updateStrategy.requiresUpdate(t, cached.hasBuyPrice() ? cached.buyPrice() : null );
 							break;
 						case SELL:
-							requiresUpdate=updateStrategy
-							.requiresUpdate(t, cached.hasSellPrice() ? cached.sellPrice() : null );
+							requiresUpdate=updateStrategy.requiresUpdate(t, cached.hasSellPrice() ? cached.sellPrice() : null );
 							break;
 						case ANY:
-							requiresUpdate= ( updateStrategy
-									.requiresUpdate(t, cached.hasBuyPrice()  ? cached.buyPrice() : null ) || 
-									updateStrategy
-									.requiresUpdate(t, cached.hasSellPrice() ? cached.sellPrice() : null ) );
+							requiresUpdate= ( updateStrategy.requiresUpdate(t, cached.hasBuyPrice()  ? cached.buyPrice() : null ) || 
+									          updateStrategy.requiresUpdate(t, cached.hasSellPrice() ? cached.sellPrice() : null ) );
 							break;
 						default:				
 							throw new RuntimeException("Unhandled switch/case: "+filter.getOrderType() );
 					}
 
-					if ( log.isDebugEnabled() ) {
-						log.debug("getPriceInfos(): [ "+updateStrategy+"] requires_update => "+requiresUpdate+" , type="+t.getName());
+					if ( LOG.isDebugEnabled() ) {
+						LOG.debug("getPriceInfos(): [ "+updateStrategy+"] requires_update => "+requiresUpdate+" , type="+t.getName());
 					}
 
 					if ( requiresUpdate ) {
@@ -521,90 +512,97 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 		/*
 		 * Query data from eve central
 		 */
-		final AtomicReference<String> xml =
-			new AtomicReference<String>(  eveCentralClient.sendRequestToServer( params ) );
+		final String responseXmlFromServer = eveCentralClient.sendRequestToServer( params );
+		final AtomicReference<String> xml = new AtomicReference<String>(  responseXmlFromServer );
 
 		/*
 		 * NEEDS to be run on the EDT since Hibernate
 		 * lazy-fetching might kick in and
 		 * the Hibernate session is confined to the EDT.
 		 */
-
 		return runOnEventThread( new PriceCallable() {
 
 			public Map<InventoryType , PriceInfoQueryResult> call() throws PriceInfoUnavailableException 
 			{
+				final Map<InventoryType, PriceInfoQueryResult> realResult = resultHolder.get();
 
-				final Map<InventoryType, PriceInfoQueryResult> realResult =
-					resultHolder.get();
-
-				final Map<Long , List<PriceInfo>> result = 
-					parsePriceInfo( filter , xml.get() );
+				final Map<Long , List<PriceInfo>> result =  parsePriceInfo( filter , xml.get() );
 
 				// group prices by item types
-				for ( InventoryType type : items ) {
 
-					List<PriceInfo> info = 
-						result.get( type.getId() );
+				List<PriceInfo> updated = new ArrayList<>();
+				try 
+				{
+					for ( InventoryType type : items ) 
+					{
+						List<PriceInfo> info = result.get( type.getId() );
 
-					if ( info == null || info.isEmpty() ) { // failed to fetch data, query user 
-						rememberPriceMissingOnEveCentral( filter , type );
-						info = queryPriceFromUser(filter, callback, type );
-					}
-
-					forgetPriceMissingOnEveCentral(filter , type );
-
-					for( PriceInfo dataFromServer : info ) {
-
-						dataFromServer.setRegion( filter.getRegion() );
-						dataFromServer.setTimestamp( new EveDate( systemClock) );
-						dataFromServer.setInventoryType(type );
-
-						final PriceInfoQueryResult cachedResult = 
-							realResult.get( type );
-
-						if ( log.isDebugEnabled() ) {
-							log.debug("getPriceInfos(): from server: "+dataFromServer+" , cached="+cachedResult);
+						if ( info == null || info.isEmpty() ) 
+						{ 
+							// failed to fetch data, query user 
+							rememberPriceMissingOnEveCentral( filter , type );
+							info = queryPriceFromUser(filter, callback, type );
 						}
 
-						PriceInfo existing;
-						switch( filter.getOrderType() ) {
+						forgetPriceMissingOnEveCentral(filter , type );
+
+						for( PriceInfo dataFromServer : info ) 
+						{
+							dataFromServer.setRegion( filter.getRegion() );
+							dataFromServer.setTimestamp( new EveDate( systemClock) );
+							dataFromServer.setInventoryType(type );
+
+							final PriceInfoQueryResult cachedResult = realResult.get( type );
+
+							if ( LOG.isDebugEnabled() ) {
+								LOG.debug("getPriceInfos(): from server: "+dataFromServer+" , cached="+cachedResult);
+							}
+
+							PriceInfo existing;
+							switch( filter.getOrderType() ) 
+							{
 							case BUY:
 								existing = cachedResult.hasBuyPrice() ? cachedResult.buyPrice() : null;
 								if ( updateStrategy.requiresUpdate( type , existing ) ) {
-									log.debug("getPriceInfos(): merging buy price.");
+									LOG.debug("getPriceInfos(): merging buy price.");
 									realResult.put( type , cachedResult.merge( filter.getOrderType() , dataFromServer ) );
 									storeCacheEntry( dataFromServer );
+									updated.add( dataFromServer );
 								}
 								break;
 							case SELL:
 								existing = cachedResult.hasSellPrice() ? cachedResult.sellPrice() : null;
 								if ( updateStrategy.requiresUpdate( type , existing ) ) {
-									log.debug("getPriceInfos(): merging sell price.");
+									LOG.debug("getPriceInfos(): merging sell price.");
 									realResult.put( type , cachedResult.merge( filter.getOrderType() , dataFromServer ) );
 									storeCacheEntry( dataFromServer );
+									updated.add( dataFromServer );
 								}
 								break;		
 							case ANY:
 								existing = cachedResult.hasBuyPrice() ? cachedResult.buyPrice() : null;
 								if ( updateStrategy.requiresUpdate( type , existing ) ) {
-									log.debug("getPriceInfos(): merging buy price.");
+									LOG.debug("getPriceInfos(): merging buy price.");
 									realResult.put( type , cachedResult.merge( PriceInfo.Type.BUY , dataFromServer ) );
 									storeCacheEntry( dataFromServer );
+									updated.add( dataFromServer );
 								}
 								existing = cachedResult.hasSellPrice() ? cachedResult.sellPrice() : null;
 								if ( updateStrategy.requiresUpdate( type , existing ) ) {
-									log.debug("getPriceInfos(): merging sell price.");
+									LOG.debug("getPriceInfos(): merging sell price.");
 									realResult.put( type , cachedResult.merge( PriceInfo.Type.SELL , dataFromServer ) );
 									storeCacheEntry( dataFromServer );
+									updated.add( dataFromServer );
 								}						
 								break;
 							default:
 								throw new RuntimeException("Unhandled switch/case: "+filter.getOrderType());
-						}
-					} 
+							}
+						} 
+					}
+				} finally {
+					fireItemPriceChanged( updated );
 				}
-
 				return realResult;
 			}
 		});
@@ -615,58 +613,55 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 		public Map<InventoryType , PriceInfoQueryResult> call() throws PriceInfoUnavailableException;
 	}
 
-	private static Map<InventoryType , PriceInfoQueryResult>  runOnEventThread(final PriceCallable r) throws PriceInfoUnavailableException{
-
-		if (SwingUtilities.isEventDispatchThread()) {
+	private static Map<InventoryType , PriceInfoQueryResult>  runOnEventThread(final PriceCallable r) throws PriceInfoUnavailableException
+	{
+		if (SwingUtilities.isEventDispatchThread()) 
+		{
 			return r.call();
-		} else {
+		} 
+		
+		final AtomicReference<Map<InventoryType , PriceInfoQueryResult> > result = new AtomicReference<Map<InventoryType , PriceInfoQueryResult>>();
+		try {
+			SwingUtilities.invokeAndWait(  new Runnable() {
 
-			final AtomicReference<Map<InventoryType , PriceInfoQueryResult> > result = new AtomicReference<Map<InventoryType , PriceInfoQueryResult>>();
-			try {
-				SwingUtilities.invokeAndWait( 
-						new Runnable() {
-
-							@Override
-							public void run()
-							{
-								try {
-									result.set( r.call() );
-								}
-								catch (PriceInfoUnavailableException e) {
-									throw new RuntimeException(e);
-								}
+						@Override
+						public void run()
+						{
+							try {
+								result.set( r.call() );
 							}
-						});
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-			catch (InvocationTargetException e) 
-			{
-				Throwable wrapped = e.getTargetException();
-				if ( wrapped instanceof RuntimeException) {
-					if ( wrapped.getCause() instanceof PriceInfoUnavailableException) {
-						throw (PriceInfoUnavailableException) wrapped.getCause();
-					}
-					throw (RuntimeException) wrapped;
-				} else if ( e.getTargetException() instanceof Error ) {
-					throw (Error) wrapped;
-				}
-				throw new RuntimeException(e.getTargetException());
-			}
-
-			return result.get();
+							catch (PriceInfoUnavailableException e) {
+								throw new RuntimeException(e);
+							}
+						}
+					});
 		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+		catch (InvocationTargetException e) 
+		{
+			Throwable wrapped = e.getTargetException();
+			if ( wrapped instanceof RuntimeException) {
+				if ( wrapped.getCause() instanceof PriceInfoUnavailableException) {
+					throw (PriceInfoUnavailableException) wrapped.getCause();
+				}
+				throw (RuntimeException) wrapped;
+			} else if ( e.getTargetException() instanceof Error ) {
+				throw (Error) wrapped;
+			}
+			throw new RuntimeException(e.getTargetException());
+		}
+		return result.get();
 	}
 
-	private List<PriceInfo> queryPriceFromUser(MarketFilter filter,
-			IPriceQueryCallback callback, InventoryType type) throws PriceInfoUnavailableException {
+	private List<PriceInfo> queryPriceFromUser(MarketFilter filter,IPriceQueryCallback callback, InventoryType type) throws PriceInfoUnavailableException 
+	{
 		if ( callback != null ) {
 			return  callback.getPriceInfo( filter , "Please enter cost information:", type );
-		} else {
-			log.error("getPriceInfos(): Unable to obtain price for item "+type.getId() );
-			throw new PriceInfoUnavailableException("Unable to obtain price" , type );
-		}
+		} 
+		LOG.error("getPriceInfos(): Unable to obtain price for item "+type.getId() );
+		throw new PriceInfoUnavailableException("Unable to obtain price" , type );
 	}
 
 	private void addFilterToRequest(List<NameValuePair> params, MarketFilter filter) {
@@ -678,22 +673,20 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 		params.add( new BasicNameValuePair("regionlimit" , Long.toString( filter.getRegion().getID() ) ) );
 	}
 
-	protected Map<Long , List<PriceInfo>> parsePriceInfo(MarketFilter filter, String xmlResponse) {
-
-		if ( log.isDebugEnabled() ) {
-			log.debug("parsePriceInfo(): filter = "+filter);
+	protected Map<Long , List<PriceInfo>> parsePriceInfo(MarketFilter filter, String xmlResponse) 
+	{
+		if ( LOG.isDebugEnabled() ) {
+			LOG.debug("parsePriceInfo(): filter = "+filter);
 		}
 
-		final Document document = 
-			parseXML( xmlResponse );
+		final Document document =  parseXML( xmlResponse );
 
-		final XPathExpression TYPE_NODES =
-			super.compileXPathExpression( "/evec_api/marketstat/type");
+		final XPathExpression TYPE_NODES = super.compileXPathExpression( "/evec_api/marketstat/type");
 
-		final Map<Long,List<PriceInfo>> result = 
-			new HashMap<Long,List<PriceInfo>>();
+		final Map<Long,List<PriceInfo>> result = new HashMap<Long,List<PriceInfo>>();
 
-		for ( Element node : super.selectElements( document , TYPE_NODES ) ) {
+		for ( Element node : super.selectElements( document , TYPE_NODES ) ) 
+		{
 			final Long typeId = getLongAttributeValue(node , "id" );
 
 			Element itemNode;
@@ -715,20 +708,17 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 				default:
 					throw new RuntimeException("Unhandled order type: "+filter.getOrderType() );
 			}
-
 		}
-
 		return result;
 	}
 
-	protected static void addToMap(Map<Long,List<PriceInfo>> map , PriceInfoWithId info) {
-
+	protected static void addToMap(Map<Long,List<PriceInfo>> map , PriceInfoWithId info) 
+	{
 		if ( info.getAveragePrice() <= 0 ) {
 			return;
 		}
 
-		List<PriceInfo> existing =
-			map.get( info.getTypeID() );
+		List<PriceInfo> existing = map.get( info.getTypeID() );
 
 		if ( existing == null ) {
 			existing = new ArrayList<PriceInfo>();
@@ -784,10 +774,7 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 	}
 
 	@Override
-	public void updatePriceInfo(MarketFilter filter, 
-			List<InventoryType> items,
-			IPriceQueryCallback callback,
-			IUpdateStrategy updateStrategy) throws PriceInfoUnavailableException 
+	public void updatePriceInfo(MarketFilter filter, List<InventoryType> items, IPriceQueryCallback callback, IUpdateStrategy updateStrategy) throws PriceInfoUnavailableException 
 			{
 		if ( filter == null ) {
 			throw new IllegalArgumentException("filter cannot be NULL");
@@ -801,15 +788,15 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 			throw new IllegalArgumentException("updateStrategy cannot be NULL");
 		}
 
-		if ( log.isDebugEnabled() ) {
-			log.debug("updatePriceInfo(): filter = "+filter+", "+
+		if ( LOG.isDebugEnabled() ) {
+			LOG.debug("updatePriceInfo(): filter = "+filter+", "+
 					" , items = "+items+" , update_strategy = "+updateStrategy);
 		}
 
 		for ( InventoryType type : items ) {
 
-			if ( log.isTraceEnabled() ) {
-				log.debug("updatePriceInfo(): querying price for "+type);
+			if ( LOG.isTraceEnabled() ) {
+				LOG.debug("updatePriceInfo(): querying price for "+type);
 			}			
 			getPriceInfo( filter , callback , type );
 		}
@@ -827,23 +814,39 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 	}
 
 	protected void fireItemPriceChanged(PriceInfo info) {
-		fireItemPriceChanged( info.getRegion() , info.getItemType() );
+		fireItemPriceChanged( Collections.singleton( info ) );
 	}
-
-	protected void fireItemPriceChanged(Region region,InventoryType item ) 
+	
+	protected void fireItemPriceChanged(Collection<PriceInfo> infos) 
 	{
-
-		if ( log.isDebugEnabled() ) {
-			log.debug("fireItemPriceChanged(): item = "+item.getName() );
+		final Map<Region,Set<InventoryType>> infosByRegion = new HashMap<>();
+		
+		for ( PriceInfo i : infos ) {
+			Set<InventoryType> list = infosByRegion.get(i.getRegion());
+			if ( list == null ) {
+				list = new HashSet<>();
+				infosByRegion.put( i.getRegion() , list );
+			}
+			list.add( i.getItemType() );
 		}
 
-		List<IPriceInfoChangeListener> cloned;
+		for ( Entry<Region, Set<InventoryType>> entry : infosByRegion.entrySet() ) 
+		{
+			fireItemPriceChanged( entry.getKey() , entry.getValue() );
+		}
+	}	
+
+	protected void fireItemPriceChanged(Region region,Set<InventoryType> items ) 
+	{
+		LOG.debug("fireItemPriceChanged(): items = "+items );
+
+		final List<IPriceInfoChangeListener> cloned;
 		synchronized (listeners) {
 			cloned = new ArrayList<IPriceInfoChangeListener>( listeners );
 		}
 
 		for ( IPriceInfoChangeListener listener : cloned) {
-			listener.priceChanged( this , region , item );
+			listener.priceChanged( this , region , items );
 		}
 	}
 
@@ -864,7 +867,8 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 	@Override
 	public IUpdateStrategy createUpdateStrategy(UpdateMode mode,PriceInfo.Type typeFilter) {
 
-		switch( mode ) {
+		switch( mode ) 
+		{
 			case DEFAULT:
 				return new DEFAULT_STRATEGY( typeFilter );
 			case UPDATE_ALL:
@@ -882,12 +886,6 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 			default:
 				throw new RuntimeException("Unhandled switch/case: "+mode);
 		}
-	}
-
-	@Override
-	public void priceInfoChanged(Region r, InventoryType type)
-	{
-		fireItemPriceChanged( r , type );
 	}
 
 	@Override
@@ -910,7 +908,7 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 			this.priceInfoStore.persist();
 		}
 		catch (IOException e) {
-			log.error("dispose(): Failed to persist price info store ?");
+			LOG.error("dispose(): Failed to persist price info store ?");
 		}
 		this.eveCentralClient.dispose();
 	}
@@ -934,10 +932,26 @@ public class EveCentralMarketDataProvider extends XMLParseHelper implements IMar
 
 	@Override
 	public void setOfflineMode(boolean yesNo) {
-		log.info("setOfflineMode(): offline = "+yesNo);
+		LOG.info("setOfflineMode(): offline = "+yesNo);
 		this.isOfflineMode = yesNo;
 	}
 
+	@Override
+	public void store(Collection<PriceInfo> info) 
+	{
+		for ( PriceInfo i : info ) {
+			store( i );
+		}
+	}
+
+	@Override
+	public void store(PriceInfo info) 
+	{
+		this.priceInfoStore.save(info);
+		fireItemPriceChanged( info );
+	}
+	
+	public Map<Long,InventoryType>  getAllKnownInventoryTypes(Region region,IInventoryTypeDAO dao) {
+		return this.priceInfoStore.getAllKnownInventoryTypes(region, dao);
+	}
 }
-
-

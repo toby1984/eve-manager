@@ -35,9 +35,9 @@ import de.codesourcery.eve.skills.db.datamodel.Region;
  */
 public interface IPriceInfoStore {
 	
-	public void store(Region region,InventoryType type , Collection<PriceInfo> info);
+	public void save(Region region,InventoryType type , Collection<PriceInfo> info);
 	
-	public void store(PriceInfo info);
+	public void save(PriceInfo info);
 	
 	/**
 	 * 
@@ -46,8 +46,7 @@ public interface IPriceInfoStore {
 	 * @param items
 	 * @return Map<Inventoy type ID , List<PriceInfo>>
 	 */
-	public Map<Long,List<PriceInfo>> getLatestPriceInfos(Region region,
-			Type kind ,Collection<InventoryType> items);
+	public Map<Long,List<PriceInfo>> getLatestPriceInfos(Region region,Type kind ,Collection<InventoryType> items);
 	
 	public Map<Long,InventoryType>  getAllKnownInventoryTypes(Region region,IInventoryTypeDAO dao);
 		

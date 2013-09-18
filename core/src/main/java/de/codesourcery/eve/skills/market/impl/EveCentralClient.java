@@ -138,7 +138,6 @@ public class EveCentralClient implements IEveCentralClient
 
 	protected String sendRequestToServer(URI relativeURI ,List<NameValuePair> requestParams) 
 	{
-
 		System.out.println("Querying EVE-central ( params: "+requestParams+" )");
 
 		final StringBuffer uriString = new StringBuffer( relativeURI.toString() );
@@ -162,24 +161,23 @@ public class EveCentralClient implements IEveCentralClient
 
 		String result;
 		try {
-			notifyStatusCallback(MessageType.INFO , 
-			"Fetching prices from eve-central ...");
+			notifyStatusCallback(MessageType.INFO , "Fetching prices from eve-central ...");
 
 			System.out.println("USING URI: "+fullURI);
 			result = sendRequest(fullURI);
 
-			notifyStatusCallback(MessageType.INFO , 
-					"Received prices from eve-central");
+			notifyStatusCallback(MessageType.INFO , "Received prices from eve-central");
 			return result;
-		} catch(RuntimeException e) {
-			notifyStatusCallback(MessageType.ERROR , 
-					"Failed to retrieve data from eve-central ("+e.getMessage()+")");
+		} 
+		catch(RuntimeException e) 
+		{
+			notifyStatusCallback(MessageType.ERROR ,"Failed to retrieve data from eve-central ("+e.getMessage()+")");
 			throw e;
 		}
 	}
 
-	protected String sendRequest(final URI fullURI) {
-
+	protected String sendRequest(final URI fullURI) 
+	{
 		log.info("sendRequestToServer(): Sending request to server, URI = "+fullURI);
 
 		final HttpClient theClient = getClient(); // getClient() calls writeLock.lock() !!!
@@ -189,7 +187,8 @@ public class EveCentralClient implements IEveCentralClient
 		 * the method tries to aquire to write lock.
 		 */
 		readLock.lock();
-		try {
+		try 
+		{
 			final HttpGet request = new HttpGet( fullURI );
 			String result;
 			try {
@@ -204,7 +203,8 @@ public class EveCentralClient implements IEveCentralClient
 				log.trace("sendRequestToServer(): response = "+result);
 			}
 			return result;
-		} finally {
+		} 
+		finally {
 			readLock.unlock();
 		}
 	}

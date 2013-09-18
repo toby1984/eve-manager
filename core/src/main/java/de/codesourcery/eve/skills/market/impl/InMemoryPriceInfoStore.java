@@ -28,7 +28,6 @@ import de.codesourcery.eve.skills.datamodel.PriceInfo.Type;
 import de.codesourcery.eve.skills.db.dao.IInventoryTypeDAO;
 import de.codesourcery.eve.skills.db.datamodel.InventoryType;
 import de.codesourcery.eve.skills.db.datamodel.Region;
-import de.codesourcery.eve.skills.market.IMarketDataProvider;
 import de.codesourcery.eve.skills.market.IPriceInfoStore;
 import de.codesourcery.eve.skills.market.MarketFilter;
 import de.codesourcery.eve.skills.utils.ISystemClock;
@@ -38,13 +37,10 @@ public class InMemoryPriceInfoStore implements IPriceInfoStore {
 	public static final Logger log = Logger
 			.getLogger(InMemoryPriceInfoStore.class);
 	
-	protected final PriceInfoCache priceInfoCache = 
-		new PriceInfoCache();
+	protected final PriceInfoCache priceInfoCache = new PriceInfoCache();
 	
 	private final ISystemClock systemClock;
 
-	private IMarketDataProvider owner;
-	
 	@Override
 	public synchronized List<PriceInfo> get(MarketFilter filter, InventoryType itemType) {
 		return priceInfoCache.getLatestPriceInfos( filter , itemType );
@@ -56,20 +52,15 @@ public class InMemoryPriceInfoStore implements IPriceInfoStore {
 		persistHook();
 	}
 	
-	public InMemoryPriceInfoStore(IMarketDataProvider owner,ISystemClock clock) {
-		if ( owner == null ) {
-			throw new IllegalArgumentException("owner cannot be NULL");
-		}
+	public InMemoryPriceInfoStore(ISystemClock clock) {
 		if ( clock == null ) {
 			throw new IllegalArgumentException("clock cannot be NULL");
 		}
 		this.systemClock = clock;
-		this.owner = owner;
 	}
 	
 	public synchronized void evict(PriceInfo info) {
 		priceInfoCache.evict( info );
-		owner.priceInfoChanged( info.getRegion() , info.getItemType() );
 	}
 
 	protected ISystemClock getSystemClock()
@@ -97,9 +88,8 @@ public class InMemoryPriceInfoStore implements IPriceInfoStore {
 	}
 	
 	@Override
-	public synchronized void store(PriceInfo info) {
+	public synchronized void save(PriceInfo info) {
 		priceInfoCache.storePriceInfo( info );
-		owner.priceInfoChanged( info.getRegion(), info.getItemType() );
 	}
 
 	@Override
@@ -113,7 +103,7 @@ public class InMemoryPriceInfoStore implements IPriceInfoStore {
 	}
 
 	@Override
-	public void store(Region region,InventoryType type , Collection<PriceInfo> infos)
+	public void save(Region region,InventoryType type , Collection<PriceInfo> infos)
 	{
 
 		if ( region == null ) {
@@ -138,7 +128,6 @@ public class InMemoryPriceInfoStore implements IPriceInfoStore {
 		}
 		
 		this.priceInfoCache.storePriceInfos( region, type, infos);
-		owner.priceInfoChanged( region, type);
 	}
 
 	@Override

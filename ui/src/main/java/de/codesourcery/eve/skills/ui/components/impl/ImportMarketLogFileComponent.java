@@ -462,8 +462,7 @@ public class ImportMarketLogFileComponent extends AbstractEditorComponent {
 	
 	public List<PriceInfo> getPriceInfosForImport() {
 		
-		final ArrayList<PriceInfo> result = 
-			new ArrayList<PriceInfo>();
+		final ArrayList<PriceInfo> result =  new ArrayList<PriceInfo>();
 		
 		if ( wasCancelled() ) {
 			return result;

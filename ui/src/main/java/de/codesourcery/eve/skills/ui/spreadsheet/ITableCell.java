@@ -17,7 +17,6 @@ package de.codesourcery.eve.skills.ui.spreadsheet;
 
 public interface ITableCell
 {
-
 	public boolean isEditable();
 	
 	public void setValue(Object value);

@@ -16,12 +16,13 @@
 package de.codesourcery.eve.skills.ui.components.impl.planning;
 
 import org.apache.log4j.Logger;
-import org.springframework.dao.EmptyResultDataAccessException;
 
 import de.codesourcery.eve.skills.datamodel.Blueprint;
+import de.codesourcery.eve.skills.datamodel.Blueprint.Kind;
 import de.codesourcery.eve.skills.datamodel.IStaticDataModel;
 import de.codesourcery.eve.skills.datamodel.RequiredMaterial;
-import de.codesourcery.eve.skills.datamodel.Blueprint.Kind;
+import de.codesourcery.eve.skills.db.datamodel.InventoryType;
+import de.codesourcery.eve.skills.db.datamodel.Region;
 import de.codesourcery.eve.skills.exceptions.NoTech1VariantException;
 import de.codesourcery.eve.skills.exceptions.PriceInfoUnavailableException;
 import de.codesourcery.eve.skills.production.InventionChanceCalculator;
@@ -30,7 +31,9 @@ import de.codesourcery.eve.skills.ui.components.impl.planning.treenodes.CopyJobN
 import de.codesourcery.eve.skills.ui.components.impl.planning.treenodes.InventionJobNode;
 import de.codesourcery.eve.skills.ui.components.impl.planning.treenodes.ManufacturingJobNode;
 import de.codesourcery.eve.skills.ui.components.impl.planning.treenodes.RequiredMaterialNode;
+import de.codesourcery.eve.skills.ui.config.IRegionQueryCallback;
 import de.codesourcery.eve.skills.ui.model.ITreeNode;
+import de.codesourcery.eve.skills.ui.utils.RegionSelectionDialog;
 import de.codesourcery.eve.skills.utils.ISKAmount;
 
 public class ProductionCostStatementGenerator
@@ -41,7 +44,7 @@ public class ProductionCostStatementGenerator
 	private final IStaticDataModel staticDataModel;
 	private final TreeNodeCostCalculator nodeCalculator;
 	private final ManufacturingJobNode node;
-
+	
 	public ProductionCostStatementGenerator(ManufacturingJobNode node,
 			TreeNodeCostCalculator nodeCalculator,
 			IStaticDataModel dataModel) 
@@ -276,6 +279,7 @@ outer:
 							description,
 							price,
 							CostPosition.Kind.ONE_TIME_COSTS,
+							material.getType(),							
 							CostPosition.Type.INDIVIDUAL,
 							! priceAvailable
 					) );
@@ -314,6 +318,7 @@ outer:
 			description,
 			amount,
 			CostPosition.Kind.FIXED_COSTS,
+			n.getRequiredMaterial().getType(),
 			CostPosition.Type.INDIVIDUAL) );
 		}
 		catch (PriceInfoUnavailableException e) 
@@ -334,8 +339,10 @@ outer:
 				String description,
 				ISKAmount pricePerUnit,
 				de.codesourcery.eve.skills.ui.components.impl.planning.CostPosition.Kind kind,
-				Type type, boolean unknownCost) {
-			super(treeNode, quantity, description, pricePerUnit, kind, type, unknownCost);
+				InventoryType itemType,					
+				Type type, 
+				boolean unknownCost) {
+			super(treeNode, quantity, description, pricePerUnit, kind, type, itemType , unknownCost);
 		}
 
 		public RequiredMaterialCostPosition(
@@ -344,16 +351,18 @@ outer:
 				String description,
 				ISKAmount pricePerUnit,
 				de.codesourcery.eve.skills.ui.components.impl.planning.CostPosition.Kind kind,
-				Type type) {
-			super(treeNode, quantity, description, pricePerUnit, kind, type);
+				InventoryType itemType,				
+				Type type
+				) {
+			super(treeNode, quantity, description, pricePerUnit, kind, itemType, type);
 		}
 
-		public RequiredMaterialCostPosition(
-				ITreeNode treeNode,
+		public RequiredMaterialCostPosition( ITreeNode treeNode,
 				int quantity,
 				String description,
 				de.codesourcery.eve.skills.ui.components.impl.planning.CostPosition.Kind kind,
-				Type type) {
+				Type type) 
+		{
 			super(treeNode, quantity, description, kind, type);
 		}
 		
@@ -379,7 +388,7 @@ outer:
 				de.codesourcery.eve.skills.ui.components.impl.planning.CostPosition.Kind kind,
 				Type type, boolean unknownCost) 
 		{
-			super(treeNode, quantity, description, pricePerUnit, kind, type, unknownCost);
+			super(treeNode, quantity, description, pricePerUnit, kind, type, null , unknownCost);
 		}
 
 		public boolean isCopy() {
@@ -401,7 +410,7 @@ outer:
 				ISKAmount pricePerUnit,
 				de.codesourcery.eve.skills.ui.components.impl.planning.CostPosition.Kind kind,
 				Type type) {
-			super(treeNode, quantity, description, pricePerUnit, kind, type);
+			super(treeNode, quantity, description, pricePerUnit, kind, null , type);
 		}
 
 		private BlueprintCostPosition(

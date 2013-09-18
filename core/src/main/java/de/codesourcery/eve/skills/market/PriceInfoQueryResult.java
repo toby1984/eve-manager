@@ -27,7 +27,6 @@ import de.codesourcery.eve.skills.utils.ISystemClock;
 
 public final class PriceInfoQueryResult
 {
-
     private static final Logger log = Logger.getLogger( PriceInfoQueryResult.class );
 
     /**

@@ -15,7 +15,9 @@
  */
 package de.codesourcery.eve.skills.datamodel;
 
-public enum SlotAttributes {
+public enum SlotAttributes 
+{
+      	// (invention,copy,research,production) times
 		NON_CALIDARI_OUTPOST(0.75f, 1.0f,0.75f, 0.75f) {
 			@Override
 			public String getDisplayName() {
@@ -31,25 +33,25 @@ public enum SlotAttributes {
 		HIGHSEC_POS(1.5f, 1.0f,0.75f, 0.75f) {
 			@Override
 			public String getDisplayName() {
-				return "POS >= 0.5";
+				return "POS, sec >= 0.5";
 			}
 		},
 		LOWSEC_POS(1.0f, 1.0f,0.75f, 0.75f) {
 			@Override
 			public String getDisplayName() {
-				return "POS < 0.5";
+				return "POS, sec < 0.5";
 			}
 		},		
 		HIGHSEC_NPC_STATION(2.5f,1.0f,1.0f,1.0f) {
 			@Override
 			public String getDisplayName() {
-				return "NPC Station >= 0.5";
+				return "NPC Station, sec >= 0.5";
 			}
 		},
 		LOWSEC_NPC_STATION(2.0f,1.0f,1.0f,1.0f) {
 			@Override
 			public String getDisplayName() {
-				return "NPC Station <= 0.5";
+				return "NPC Station, sec <= 0.5";
 			}
 		};
 		
@@ -67,8 +69,8 @@ public enum SlotAttributes {
 		private final float productionTimeModifier;
 
 		
-		private SlotAttributes(float inventionTimeModifier,float copyTimeModifier, float researchTimeModifier,
-				float productionTimeModifier) {
+		private SlotAttributes(float inventionTimeModifier,float copyTimeModifier, float researchTimeModifier,float productionTimeModifier) 
+		{
 			this.inventionTimeModifier = inventionTimeModifier;
 			this.copyTimeModifier = copyTimeModifier;
 			this.researchTimeModifier = researchTimeModifier;

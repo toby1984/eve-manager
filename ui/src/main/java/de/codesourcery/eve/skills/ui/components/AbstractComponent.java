@@ -38,16 +38,17 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.eve.skills.ui.utils.ApplicationThreadManager;
+import de.codesourcery.eve.skills.ui.utils.ApplicationThreadManager.ITaskWithoutResult;
 import de.codesourcery.eve.skills.ui.utils.ConstraintsBuilder;
 import de.codesourcery.eve.skills.ui.utils.Misc;
 import de.codesourcery.eve.skills.ui.utils.ParallelUITasksRunner;
 import de.codesourcery.eve.skills.ui.utils.UITask;
-import de.codesourcery.eve.skills.ui.utils.ApplicationThreadManager.ITaskWithoutResult;
 import de.codesourcery.eve.skills.util.AmountHelper;
 import de.codesourcery.eve.skills.util.IStatusCallback;
-import de.codesourcery.eve.skills.util.SpringBeanInjector;
 import de.codesourcery.eve.skills.util.IStatusCallback.MessageType;
+import de.codesourcery.eve.skills.util.SpringBeanInjector;
 import de.codesourcery.eve.skills.utils.ISKAmount;
+import de.codesourcery.eve.skills.utils.ISystemClock;
 
 /**
  * Base class for all {@link IComponent} implementations.
@@ -71,17 +72,22 @@ public abstract class AbstractComponent implements IComponent {
 	
 	private boolean isModal = false;
 	
-	private volatile ComponentState componentState =
-		ComponentState.NEW;
+	@Resource(name="thread-manager")
+	private ApplicationThreadManager threadManager;
+	
+	private volatile ComponentState componentState = ComponentState.NEW;
+	
+	@Resource(name="system-clock")
+	private ISystemClock systemClock;
 	
 	/**
 	 * Child components that share
 	 * the same life-cycle as this component.
 	 */
-	private final List<IComponent> children = 
-		new ArrayList<IComponent>();
+	private final List<IComponent> children =  new ArrayList<IComponent>();
 	
-	public interface ILabelProvider<X> {
+	public interface ILabelProvider<X> 
+	{
 		public String getLabel(X obj);
 	}
 	
@@ -156,9 +162,6 @@ public abstract class AbstractComponent implements IComponent {
 		}
 		this.componentState = state;
 	}
-	
-	@Resource(name="thread-manager")
-	private ApplicationThreadManager threadManager;
 	
 	public AbstractComponent() {
 		SpringBeanInjector.getInstance().injectDependencies( this );
@@ -456,4 +459,7 @@ public abstract class AbstractComponent implements IComponent {
 		return BorderFactory.createLineBorder( c );
 	}
 
+	protected final ISystemClock getSystemClock() {
+		return systemClock;
+	}
 }

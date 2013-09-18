@@ -15,13 +15,16 @@
  */
 package de.codesourcery.eve.skills.market.impl;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.springframework.beans.factory.InitializingBean;
 
+import de.codesourcery.eve.skills.datamodel.PriceInfo;
 import de.codesourcery.eve.skills.datamodel.PriceInfo.Type;
+import de.codesourcery.eve.skills.db.dao.IInventoryTypeDAO;
 import de.codesourcery.eve.skills.db.datamodel.InventoryType;
 import de.codesourcery.eve.skills.db.datamodel.Region;
 import de.codesourcery.eve.skills.exceptions.PriceInfoUnavailableException;
@@ -90,10 +93,16 @@ public class DefaultMarketDataProvider implements IMarketDataProvider , Initiali
 	public boolean isOfflineMode() {
 		return wrappedProvider.isOfflineMode();
 	}
-
+	
 	@Override
-	public void priceInfoChanged(Region r, InventoryType type) {
-		wrappedProvider.priceInfoChanged(r, type);
+	public void store(PriceInfo info) {
+		wrappedProvider.store(info);
+	}
+	
+	@Override
+	public void store(Collection<PriceInfo> info) 
+	{
+		wrappedProvider.store(info);
 	}
 
 	@Override
@@ -114,7 +123,8 @@ public class DefaultMarketDataProvider implements IMarketDataProvider , Initiali
 	@Override
 	public void updatePriceInfo(MarketFilter filter, List<InventoryType> items,
 			IPriceQueryCallback callback, IUpdateStrategy updateStrategy)
-			throws PriceInfoUnavailableException {
+			throws PriceInfoUnavailableException 
+	{
 		wrappedProvider.updatePriceInfo( filter , items , callback , updateStrategy );
 	}
 
@@ -130,5 +140,11 @@ public class DefaultMarketDataProvider implements IMarketDataProvider , Initiali
 	public void afterPropertiesSet() throws Exception {
 		applicationConfig.addChangeListener( this.configChangeListener );	
 		this.wrappedProvider.setOfflineMode( ! applicationConfig.getAppConfig().isEveCentralEnabled() );
+	}
+
+	@Override
+	public Map<Long, InventoryType> getAllKnownInventoryTypes(Region region,IInventoryTypeDAO dao) 
+	{
+		return wrappedProvider.getAllKnownInventoryTypes(region, dao);
 	}
 }

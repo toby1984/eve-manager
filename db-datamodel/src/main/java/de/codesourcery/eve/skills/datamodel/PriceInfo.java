@@ -27,7 +27,8 @@ public class PriceInfo {
 
 	private static final Logger log = Logger.getLogger(PriceInfo.class);
 	
-	public enum Source {
+	public enum Source 
+	{
 		USER_PROVIDED("u","User-provided"),
 		EVE_CENTRAL("e", "EVE-central"),
 		MARKET_LOG("m", "market logfile");

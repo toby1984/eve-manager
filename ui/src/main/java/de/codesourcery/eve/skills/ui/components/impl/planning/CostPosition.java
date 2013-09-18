@@ -17,6 +17,7 @@ package de.codesourcery.eve.skills.ui.components.impl.planning;
 
 import org.apache.commons.lang.StringUtils;
 
+import de.codesourcery.eve.skills.db.datamodel.InventoryType;
 import de.codesourcery.eve.skills.ui.model.ITreeNode;
 import de.codesourcery.eve.skills.utils.ISKAmount;
 
@@ -31,6 +32,8 @@ public abstract class CostPosition
 	private Kind kind;
 	private Type type;
 	
+	private InventoryType itemType;
+	
 	private boolean unknownCost;
 	
 	public enum Kind {
@@ -44,48 +47,10 @@ public abstract class CostPosition
 		INDIVIDUAL;
 	}
 	
-	public int getQuantity()
+	
+	public CostPosition(ITreeNode treeNode, int quantity , String description, Kind kind, Type type) 
 	{
-		return quantity;
-	}
-	
-	@Override
-	public String toString()
-	{
-		return "type="+type+" ,kind="+kind+",unknown_costs="+unknownCost+" , price="+pricePerUnit+" , quantity="+
-		quantity+" , description="+description+",node="+treeNode;
-	}
-	
-	public void copyFrom(CostPosition other) {
-		this.treeNode = other.getTreeNode();
-		this.description = other.description;
-		this.quantity = other.quantity;
-		this.pricePerUnit = other.pricePerUnit;
-		this.kind = other.kind;
-		this.type = other.type;
-		this.unknownCost = other.unknownCost;
-	}
-	
-	public void incQuantity(int amount) {
-		if ( amount < 0 ) {
-			throw new IllegalArgumentException("amount cannot be negative");
-		}
-		this.quantity+=amount;
-	}
-	
-	protected void setDescription(String desc) {
-		
-		if ( StringUtils.isBlank(desc) ) {
-			throw new IllegalArgumentException("desc cannot be blank.");
-		}
-		this.description = desc;
-	}
-	
-	public CostPosition(ITreeNode treeNode, 
-			int quantity , 
-			String description, Kind kind, Type type) 
-	{
-		this(treeNode, quantity, description, ISKAmount.ZERO_ISK, kind, type, true );
+		this(treeNode, quantity, description, ISKAmount.ZERO_ISK, kind, type, null , true );
 	}
 	
 	public CostPosition(ITreeNode treeNode, 
@@ -93,9 +58,10 @@ public abstract class CostPosition
 			String description,
 			ISKAmount pricePerUnit,
 			Kind kind, 
+			InventoryType itemType,			
 			Type type) 
 	{
-		this(treeNode, quantity, description, pricePerUnit, kind, type, false );
+		this(treeNode, quantity, description, pricePerUnit, kind, type, itemType , false );
 	}
 	
 	public CostPosition(ITreeNode treeNode, 
@@ -104,6 +70,7 @@ public abstract class CostPosition
 			ISKAmount pricePerUnit,
 			Kind kind, 
 			Type type,
+			InventoryType itemType,
 			boolean unknownCost) 
 	{
 		if ( quantity < 0 ) {
@@ -114,6 +81,8 @@ public abstract class CostPosition
 		this.unknownCost = unknownCost;
 		
 		this.quantity = quantity;
+		this.itemType = itemType;
+		
 		if ( StringUtils.isBlank(description) ) {
 			throw new IllegalArgumentException(
 					"description cannot be blank.");
@@ -138,6 +107,44 @@ public abstract class CostPosition
 		this.description = description;
 		this.kind = kind;
 		this.type = type;
+	}	
+	
+	public int getQuantity()
+	{
+		return quantity;
+	}
+	
+	@Override
+	public String toString()
+	{
+		return "type="+type+" ,kind="+kind+",unknown_costs="+unknownCost+" , price="+pricePerUnit+" , quantity="+
+		quantity+" , description="+description+",node="+treeNode;
+	}
+	
+	public void copyFrom(CostPosition other) 
+	{
+		this.treeNode = other.getTreeNode();
+		this.description = other.description;
+		this.quantity = other.quantity;
+		this.pricePerUnit = other.pricePerUnit;
+		this.kind = other.kind;
+		this.type = other.type;
+		this.unknownCost = other.unknownCost;
+	}
+	
+	public void incQuantity(int amount) {
+		if ( amount < 0 ) {
+			throw new IllegalArgumentException("amount cannot be negative");
+		}
+		this.quantity+=amount;
+	}
+	
+	protected void setDescription(String desc) {
+		
+		if ( StringUtils.isBlank(desc) ) {
+			throw new IllegalArgumentException("desc cannot be blank.");
+		}
+		this.description = desc;
 	}
 	
 	public ISKAmount getPricePerUnit()
@@ -162,6 +169,10 @@ public abstract class CostPosition
 	public Kind getKind()
 	{
 		return kind;
+	}
+	
+	public InventoryType getItemType() {
+		return itemType;
 	}
 
 	public Type getType()

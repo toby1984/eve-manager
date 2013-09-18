@@ -92,9 +92,6 @@ public class OreChartComponent extends AbstractComponent
 	@Resource(name="marketdata-provider")
 	private IMarketDataProvider marketDataProvider;
 
-	@Resource(name="priceinfo-store")
-	private IPriceInfoStore priceInfoStore;
-	
 	@Resource(name="dialog-manager")
 	private PersistentDialogManager dialogManager;
 
@@ -182,7 +179,7 @@ public class OreChartComponent extends AbstractComponent
 			info.setTimestamp( new EveDate( clock ) );
 			info.setSource( Source.USER_PROVIDED );
 
-			priceInfoStore.store( info );
+			marketDataProvider.store( info );
 			this.priceInfoCache.remove( info.getItemType().getId() );
 			mineralPriceTableModel.refresh();
 			tableModel.refresh();

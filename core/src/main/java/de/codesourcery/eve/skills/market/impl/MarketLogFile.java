@@ -379,8 +379,7 @@ public class MarketLogFile {
 			existing.add( entry );
 		}
 		
-		final ArrayList<PriceInfo> result = 
-			new ArrayList<PriceInfo>();
+		final ArrayList<PriceInfo> result =  new ArrayList<PriceInfo>();
 		
 		for ( List<MarketLogEntry> ordersOfOneDay : sellOrdersByDay.values() ) {
 			result.add( mergeOneDay( ordersOfOneDay , clock ) );
@@ -400,7 +399,6 @@ public class MarketLogFile {
 			InventoryType type,
 			ISystemClock clock) 
 	{
-	
 		if ( clock == null ) {
 			throw new IllegalArgumentException("clock cannot be NULL");
 		}
@@ -468,8 +466,7 @@ public class MarketLogFile {
 		
 		result.mergingFinished();
 		
-		PriceInfo info = 
-			toPriceInfo( result , getRegion() , getInventoryType() , clock );
+		PriceInfo info = toPriceInfo( result , getRegion() , getInventoryType() , clock );
 
 		info.setMinPrice( Math.round( minPrice * 100.0d) );
 		info.setMaxPrice( Math.round( maxPrice * 100.0d) );

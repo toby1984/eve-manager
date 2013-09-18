@@ -33,14 +33,13 @@ import de.codesourcery.eve.skills.datamodel.PriceInfo.Type;
 import de.codesourcery.eve.skills.db.dao.IInventoryTypeDAO;
 import de.codesourcery.eve.skills.db.datamodel.InventoryType;
 import de.codesourcery.eve.skills.db.datamodel.Region;
-import de.codesourcery.eve.skills.market.IMarketDataProvider;
 import de.codesourcery.eve.skills.market.MarketFilter;
 import de.codesourcery.eve.skills.utils.ISystemClock;
 
 public class FilePriceInfoStore extends InMemoryPriceInfoStore {
 
-	public FilePriceInfoStore(IMarketDataProvider owner,ISystemClock clock) {
-		super(owner , clock );
+	public FilePriceInfoStore(ISystemClock clock) {
+		super(clock );
 	}
 
 	public static final Logger log = Logger.getLogger(FilePriceInfoStore.class);

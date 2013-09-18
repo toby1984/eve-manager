@@ -36,6 +36,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import javax.annotation.Resource;
@@ -71,15 +72,14 @@ import de.codesourcery.eve.skills.db.datamodel.InventoryType;
 import de.codesourcery.eve.skills.db.datamodel.Region;
 import de.codesourcery.eve.skills.exceptions.PriceInfoUnavailableException;
 import de.codesourcery.eve.skills.market.IMarketDataProvider;
-import de.codesourcery.eve.skills.market.IPriceInfoStore;
+import de.codesourcery.eve.skills.market.IMarketDataProvider.IPriceInfoChangeListener;
+import de.codesourcery.eve.skills.market.IMarketDataProvider.IUpdateStrategy;
+import de.codesourcery.eve.skills.market.IMarketDataProvider.UpdateMode;
 import de.codesourcery.eve.skills.market.IPriceQueryCallback;
 import de.codesourcery.eve.skills.market.MarketFilter;
 import de.codesourcery.eve.skills.market.MarketFilterBuilder;
 import de.codesourcery.eve.skills.market.MarketLogEntry;
 import de.codesourcery.eve.skills.market.PriceInfoQueryResult;
-import de.codesourcery.eve.skills.market.IMarketDataProvider.IPriceInfoChangeListener;
-import de.codesourcery.eve.skills.market.IMarketDataProvider.IUpdateStrategy;
-import de.codesourcery.eve.skills.market.IMarketDataProvider.UpdateMode;
 import de.codesourcery.eve.skills.market.impl.EveMarketLogParser;
 import de.codesourcery.eve.skills.market.impl.MarketLogFile;
 import de.codesourcery.eve.skills.market.impl.MarketLogFile.IMarketLogVisitor;
@@ -102,7 +102,6 @@ import de.codesourcery.eve.skills.utils.ISystemClock;
 
 public class MarketPriceEditorComponent extends AbstractComponent
 {
-
     private static final Logger log = Logger.getLogger( MarketPriceEditorComponent.class );
 
     private static final Comparator<? super TableEntry> BY_ITEMNAME_COMPARATOR =
@@ -152,9 +151,6 @@ public class MarketPriceEditorComponent extends AbstractComponent
     @Resource(name = "system-clock")
     private ISystemClock systemClock;
 
-    @Resource(name = "priceinfo-store")
-    private IPriceInfoStore priceInfoStore;
-
     @Resource(name = "marketdata-provider")
     private IMarketDataProvider marketDataProvider;
 
@@ -166,41 +162,42 @@ public class MarketPriceEditorComponent extends AbstractComponent
 
     @Resource(name = "region-dao")
     private IRegionDAO regionDAO;
+    
+    @Resource(name="static-datamodel")
+    private IStaticDataModel staticDataModel;
 
     private int oldTooltipDismissalDelay = - 1;
     private final JPopupMenu popupMenu = new JPopupMenu();
 
-    private final class MyModel extends ListViewModel<TableEntry> implements
-            IPriceInfoChangeListener
+    private final class MyModel extends ListViewModel<TableEntry> implements IPriceInfoChangeListener
     {
-
         @Override
-        public void priceChanged(final IMarketDataProvider caller, final Region region,
-                final InventoryType type)
+        public void priceChanged(final IMarketDataProvider caller, final Region region,final Set<InventoryType> type)
         {
-
-            if ( log.isDebugEnabled() )
-            {
-                log.debug( "priceChanged(): region=" + region.getName() + ", item="
-                        + type.getName() + " (" + type.getId() + ")" );
-            }
-
             refreshTable();
-        }
-
-        protected List<PriceInfo> fetchPriceInfo(MarketFilter filter, InventoryType item)
-        {
-            try
-            {
-                return priceInfoStore.get( filter, item );
-            }
-            catch (Exception e)
-            {
-                return Collections.emptyList();
-            }
         }
     }
 
+    protected List<PriceInfo> fetchPriceInfo(MarketFilter filter, InventoryType item)
+    {
+        try
+        {
+            final PriceInfoQueryResult result = marketDataProvider.getPriceInfo( filter, null , item );
+            List<PriceInfo> list = new ArrayList<>();
+            if ( result.hasBuyPrice() ) {
+            	list.add( result.buyPrice() );
+            }
+            if ( result.hasSellPrice() ) {
+            	list.add( result.sellPrice() );
+            }
+            return list;
+        }
+        catch (Exception e)
+        {
+            return Collections.emptyList();
+        }
+    }
+    
     /*
      * Mouse listener that gets attached to the table and displays a
      * context-sensitive popup-menu.
@@ -231,9 +228,7 @@ public class MarketPriceEditorComponent extends AbstractComponent
         super();
         this.marketDataProvider = marketDataProvider;
 
-        this.tableModel =
-                new PriceInfoTableModel( priceInfoStore, getDefaultRegion(),
-                        this.viewModel, systemClock );
+        this.tableModel = new PriceInfoTableModel( marketDataProvider, getDefaultRegion(), this.viewModel, systemClock );
         registerChildren( this.itemNameFilter );
     }
 
@@ -413,7 +408,6 @@ public class MarketPriceEditorComponent extends AbstractComponent
 
     private void importMarketLogs(File[] inputFiles)
     {
-
         if ( ArrayUtils.isEmpty( inputFiles ) )
         {
             return;
@@ -421,13 +415,10 @@ public class MarketPriceEditorComponent extends AbstractComponent
 
         for (final File current : inputFiles)
         {
-
             final MarketLogFile logFile;
             try
             {
-                logFile =
-                        new EveMarketLogParser( dataModelProvider.getStaticDataModel(),
-                                systemClock ).parseFile( current );
+                logFile=new EveMarketLogParser( dataModelProvider.getStaticDataModel(),systemClock ).parseFile( current );
             }
             catch (Exception e)
             {
@@ -471,18 +462,13 @@ public class MarketPriceEditorComponent extends AbstractComponent
                 continue; // user skipped this file
             }
 
-            log.info( "importMarketLogs(): Importing data from file "
-                    + current.getAbsolutePath() );
-
-            this.priceInfoStore
-                    .store( comp.getMarketLogFile().getRegion(), comp.getMarketLogFile()
-                            .getInventoryType(), comp.getPriceInfosForImport() );
+            log.info( "importMarketLogs(): Importing data from file "+ current.getAbsolutePath() );
+            this.marketDataProvider.store( comp.getPriceInfosForImport() );
         }
     }
 
     protected boolean reallyImportFile(MarketLogFile logFile)
     {
-
         if ( ! Region.isSameRegion( logFile.getRegion(), getDefaultRegion() ) )
         {
             final String label =
@@ -513,14 +499,12 @@ public class MarketPriceEditorComponent extends AbstractComponent
         return true;
     }
 
-    protected boolean checkForOrdersConflictingWithExistingData(MarketLogFile logFile,
-            final PriceInfo.Type priceType)
+    protected boolean checkForOrdersConflictingWithExistingData(MarketLogFile logFile,final PriceInfo.Type priceType)
     {
 
         // get date of latest price currently known
-        final List<PriceInfo> history =
-                priceInfoStore.getPriceHistory( logFile.getRegion(), priceType, logFile
-                        .getInventoryType() );
+    	MarketFilter filter = new MarketFilterBuilder(priceType,logFile.getRegion()).end();
+        final List<PriceInfo> history = fetchPriceInfo( filter , logFile.getInventoryType() );
 
         if ( history.isEmpty() || logFile.isEmpty() )
         {
@@ -530,8 +514,7 @@ public class MarketPriceEditorComponent extends AbstractComponent
         EveDate latestHistoryDate = null;
         for (PriceInfo info : history)
         {
-            if ( latestHistoryDate == null
-                    || info.getTimestamp().compareTo( latestHistoryDate ) >= 0 )
+            if ( latestHistoryDate == null|| info.getTimestamp().compareTo( latestHistoryDate ) >= 0 )
             {
                 latestHistoryDate = info.getTimestamp();
             }
@@ -1266,19 +1249,11 @@ public class MarketPriceEditorComponent extends AbstractComponent
 
     private void refreshTable()
     {
+        final Map<Long, List<PriceInfo>> priceInfos = fetchPrices();
 
-        final Map<Long, InventoryType> knownPrices =
-                priceInfoStore.getAllKnownInventoryTypes( getDefaultRegion(), itemDAO );
-
-        final Map<Long, List<PriceInfo>> priceInfos =
-                priceInfoStore.getLatestPriceInfos( getDefaultRegion(), Type.ANY,
-                    knownPrices.values() );
-
-        final List<TableEntry> priceInfo = new ArrayList<TableEntry>();
-
-        for (Map.Entry<Long, List<PriceInfo>> entry : priceInfos.entrySet())
+        List<TableEntry> priceInfo = new ArrayList<>();
+		for (Map.Entry<Long, List<PriceInfo>> entry : priceInfos.entrySet())
         {
-
             final List<PriceInfo> data = entry.getValue();
 
             if ( data.size() > 2 )
@@ -1287,7 +1262,7 @@ public class MarketPriceEditorComponent extends AbstractComponent
                         + " price infos for item ID " + + entry.getKey() );
             }
 
-            final InventoryType item = knownPrices.get( entry.getKey() );
+            final InventoryType item = staticDataModel.getInventoryType( entry.getKey() );
 
             final PriceInfo buyPrice = findPriceInfo( Type.BUY, data );
             final PriceInfo sellPrice = findPriceInfo( Type.SELL, data );
@@ -1299,7 +1274,6 @@ public class MarketPriceEditorComponent extends AbstractComponent
                 log.trace( "refreshTable(): [ " + item.getName() + " ] , sell price = "
                         + sellPrice );
             }
-
             priceInfo.add( new TableEntry( item, buyPrice, sellPrice ) );
         }
 
@@ -1307,9 +1281,48 @@ public class MarketPriceEditorComponent extends AbstractComponent
         viewModel.setData( priceInfo );
     }
 
+	private Map<Long, List<PriceInfo>> fetchPrices() 
+	{
+        final Map<Long, List<PriceInfo>> priceInfos = new HashMap<>();
+        
+		final Map<Long, InventoryType> knownPrices = this.marketDataProvider.getAllKnownInventoryTypes( getDefaultRegion(), itemDAO );        
+		final MarketFilter filter = new MarketFilterBuilder( Type.ANY , getDefaultRegion() ).end();
+		try {
+			final IPriceQueryCallback callback = new IPriceQueryCallback() {
+				
+				@Override
+				public List<PriceInfo> getPriceInfo(MarketFilter filter, String message,InventoryType item) throws PriceInfoUnavailableException 
+				{
+					return new ArrayList<>();
+				}
+			};
+			
+			final Map<InventoryType, PriceInfoQueryResult> prices = marketDataProvider.getPriceInfos( filter , callback , knownPrices.values().toArray(new InventoryType[ knownPrices.size() ]) );
+			for ( Entry<InventoryType, PriceInfoQueryResult> entry : prices.entrySet() ) 
+			{
+				final List<PriceInfo> list = new ArrayList<>();
+				PriceInfoQueryResult queryResult = entry.getValue();
+				if ( queryResult.hasBuyPrice() ) {
+					list.add( queryResult.buyPrice() );
+				}
+				if ( queryResult.hasSellPrice() ) {
+					list.add( queryResult.sellPrice() );
+				}				
+				priceInfos.put( entry.getKey().getId() , list );
+			}
+		} 
+		catch (PriceInfoUnavailableException e) 
+		{
+			for ( InventoryType t : knownPrices.values() ) 
+			{
+				priceInfos.put( t.getId() , new ArrayList<PriceInfo>() );
+			}
+		}
+		return priceInfos;
+	}
+
     protected final class StalePriceInfoHighlighter extends DefaultTableCellRenderer
     {
-
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
                 boolean isSelected, boolean hasFocus, int viewRow, int column)

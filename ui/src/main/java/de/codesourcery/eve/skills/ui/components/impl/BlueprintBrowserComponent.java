@@ -123,6 +123,11 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		}
 	}
 
+	protected int getRequestedRuns() 
+	{
+		return getRequestedQuantity() / getCurrentlySelectedBlueprint().getPortionSize();
+	}
+	
 	protected int getRequestedQuantity() {
 		return Integer.parseInt( this.quantity.getText() ); 
 	}
@@ -299,6 +304,8 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		appendLine(text);
 
 		appendLine(text, "Tech level", "" + bp.getTechLevel());
+		
+		appendLine(text, "Units per run: ", "" + bp.getPortionSize() );
 
 		appendLine(text);
 		
@@ -460,7 +467,7 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		
 		for (RequiredMaterial mat : sortedMats ) {
 
-			final float initial = mat.getQuantity()*getRequestedQuantity();
+			final float initial = mat.getQuantity() * getRequestedRuns();
 			final float you = calcRequiredMaterial(bp, mat);
 
 			float waste = 100.0f * ( you / initial) - 100.0f;
@@ -542,7 +549,8 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return job;
 	}
 
-	private int getMetallurgySkillLevel() {
+	private int getMetallurgySkillLevel() 
+	{
 		final ICharacter c = getCurrentlySelectedCharacter();
 
 		if (c == null) {
@@ -557,7 +565,8 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return c.getSkillLevel(metallury).getLevel();
 	}
 
-	private int getScienceSkillLevel() {
+	private int getScienceSkillLevel() 
+	{
 		final ICharacter c = getCurrentlySelectedCharacter();
 
 		if (c == null) {
@@ -572,7 +581,8 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return c.getSkillLevel(science).getLevel();
 	}	
 
-	private int getResearchSkillLevel() {
+	private int getResearchSkillLevel() 
+	{
 		final ICharacter c = getCurrentlySelectedCharacter();
 
 		if (c == null) {
@@ -587,16 +597,15 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return c.getSkillLevel(research).getLevel();		
 	}
 
-	private int getIndustrySkillLevel() {
-
+	private int getIndustrySkillLevel() 
+	{
 		final ICharacter c = getCurrentlySelectedCharacter();
 
 		if (c == null) {
 			return 0;
 		}
 
-		final Skill industry = Skill.getIndustrySkill(getDataModel()
-				.getSkillTree());
+		final Skill industry = Skill.getIndustrySkill( getDataModel().getSkillTree() );
 
 		if (!c.hasSkill(industry)) {
 			return 0;
@@ -604,8 +613,8 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return c.getSkillLevel(industry).getLevel();
 	}
 
-	private String calcProductionTime(Blueprint bp, int PE) {
-
+	private String calcProductionTime(Blueprint bp, int PE) 
+	{
 		long time = getRequestedQuantity() * bp.calculateProductionTime(PE, getIndustrySkillLevel(),
 				1.0f, // implant modifier,
 				getSlotLocation() );
@@ -613,8 +622,8 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return DateHelper.durationToString(time * 1000);
 	}
 
-	private String calcCopyTime(Blueprint bp) {
-
+	private String calcCopyTime(Blueprint bp) 
+	{
 		/*
 		 Copy Time ={Blueprint Base Copy Time} * ( 1 - (0.05 * {Science Skill Level} ) * {Copy Slot Modifier} * {Implant Modifier}
 		 */
@@ -623,8 +632,8 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return DateHelper.durationToString(time * 1000 );
 	}
 
-	private String calcMEResearchTime(Blueprint bp, int fromME,int toME) {
-
+	private String calcMEResearchTime(Blueprint bp, int fromME,int toME)
+	{
 		if ( fromME > toME ) {
 			throw new IllegalArgumentException("fromME must be <= toME");
 		}
@@ -647,15 +656,16 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return DateHelper.durationToString( delta * 1000);		
 	}
 
-	protected SlotAttributes getSlotLocation() {
+	protected SlotAttributes getSlotLocation() 
+	{
 		if ( posButton.isSelected() ) {
 			return SlotAttributes.HIGHSEC_POS;
 		}
 		return SlotAttributes.HIGHSEC_NPC_STATION;
 	}
 
-	private String meetsRequirement(Prerequisite skillRequirement) {
-
+	private String meetsRequirement(Prerequisite skillRequirement) 
+	{
 		String result = " <no character selected>";
 
 		final ICharacter currentChar = getCurrentlySelectedCharacter();
@@ -668,8 +678,7 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 			return " [ NOT TRAINED ]";
 		}
 
-		final TrainedSkill trained = currentChar.getSkillLevel(skillRequirement
-				.getSkill());
+		final TrainedSkill trained = currentChar.getSkillLevel(skillRequirement.getSkill());
 
 		if (trained.getLevel() < skillRequirement.getRequiredLevel()) {
 			return " [ current level: " + trained.getLevel() + " ]";
@@ -677,11 +686,13 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return "";
 	}
 
-	protected static void appendLine(StringBuilder builder) {
+	protected static void appendLine(StringBuilder builder) 
+	{
 		builder.append("\n");
 	}
 
-	protected static void appendSeparator(StringBuilder builder) {
+	protected static void appendSeparator(StringBuilder builder) 
+	{
 		builder.append("--------------------------\n");
 	}
 
@@ -706,7 +717,8 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		this.blueprintChooser.setCharacterProvider( selectionProvider );
 	}
 
-	protected ICharacter getCurrentlySelectedCharacter() {
+	protected ICharacter getCurrentlySelectedCharacter() 
+	{
 		if (this.charProvider == null) {
 			return null;
 		}
@@ -714,8 +726,8 @@ ActionListener , IDoubleClickSelectionListener<Blueprint> {
 		return charProvider.getSelectedItem();
 	}
 
-	private int getProductionEfficiencySkillLevel() {
-
+	private int getProductionEfficiencySkillLevel() 
+	{
 		final ICharacter character =
 			getCurrentlySelectedCharacter();
 

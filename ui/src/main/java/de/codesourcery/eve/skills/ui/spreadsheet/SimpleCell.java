@@ -18,8 +18,7 @@ package de.codesourcery.eve.skills.ui.spreadsheet;
 public class SimpleCell implements ITableCell
 {
 	private Object value;
-	private final CellAttributes attrs =
-		new CellAttributes();
+	private final CellAttributes attrs = new CellAttributes();
 	
 	public SimpleCell() {
 	}

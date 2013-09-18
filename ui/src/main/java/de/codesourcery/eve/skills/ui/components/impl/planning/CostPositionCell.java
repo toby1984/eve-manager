@@ -21,7 +21,8 @@ public class CostPositionCell extends SimpleCell
 {
 	private final CostPosition pos;
 	
-	public CostPositionCell(CostPosition pos , String label) {
+	public CostPositionCell(CostPosition pos , String label) 
+	{
 		super(label);
 		if ( pos == null ) {
 			throw new IllegalArgumentException("pos cannot be NULL");

@@ -26,12 +26,15 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.Resource;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.DefaultCellEditor;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.text.JTextComponent;
 
@@ -41,6 +44,9 @@ import org.apache.log4j.Logger;
 import de.codesourcery.eve.skills.datamodel.IStaticDataModel;
 import de.codesourcery.eve.skills.datamodel.ItemWithQuantity;
 import de.codesourcery.eve.skills.datamodel.ManufacturingJobRequest;
+import de.codesourcery.eve.skills.datamodel.PriceInfo;
+import de.codesourcery.eve.skills.datamodel.PriceInfo.Source;
+import de.codesourcery.eve.skills.datamodel.PriceInfo.Type;
 import de.codesourcery.eve.skills.db.datamodel.InventoryType;
 import de.codesourcery.eve.skills.db.datamodel.Region;
 import de.codesourcery.eve.skills.market.IMarketDataProvider;
@@ -54,6 +60,7 @@ import de.codesourcery.eve.skills.ui.components.impl.planning.CostPosition.Kind;
 import de.codesourcery.eve.skills.ui.components.impl.planning.treenodes.BlueprintNode;
 import de.codesourcery.eve.skills.ui.components.impl.planning.treenodes.ManufacturingJobNode;
 import de.codesourcery.eve.skills.ui.components.impl.planning.treenodes.RequiredMaterialNode;
+import de.codesourcery.eve.skills.ui.config.IRegionQueryCallback;
 import de.codesourcery.eve.skills.ui.model.ITreeNode;
 import de.codesourcery.eve.skills.ui.spreadsheet.CellAttributes;
 import de.codesourcery.eve.skills.ui.spreadsheet.IHighlightingFunction;
@@ -65,10 +72,13 @@ import de.codesourcery.eve.skills.ui.spreadsheet.SpreadSheetTable;
 import de.codesourcery.eve.skills.ui.spreadsheet.SpreadSheetTableModel;
 import de.codesourcery.eve.skills.ui.spreadsheet.TableRow;
 import de.codesourcery.eve.skills.ui.utils.GridLayoutBuilder;
-import de.codesourcery.eve.skills.ui.utils.PlainTextTransferable;
-import de.codesourcery.eve.skills.ui.utils.PopupMenuBuilder;
 import de.codesourcery.eve.skills.ui.utils.GridLayoutBuilder.Cell;
 import de.codesourcery.eve.skills.ui.utils.GridLayoutBuilder.VerticalGroup;
+import de.codesourcery.eve.skills.ui.utils.PlainTextTransferable;
+import de.codesourcery.eve.skills.ui.utils.PopupMenuBuilder;
+import de.codesourcery.eve.skills.ui.utils.RegionSelectionDialog;
+import de.codesourcery.eve.skills.util.AmountHelper;
+import de.codesourcery.eve.skills.utils.EveDate;
 import de.codesourcery.eve.skills.utils.ISKAmount;
 
 /**
@@ -81,12 +91,10 @@ import de.codesourcery.eve.skills.utils.ISKAmount;
  */
 public class CostStatementComponent extends AbstractComponent 
 {
-	private static final Logger log = Logger
-	.getLogger(CostStatementComponent.class);
+	private static final Logger log = Logger.getLogger(CostStatementComponent.class);
 	
-	private static final IHighlightingFunction unknownCostHighlightingFunction =
-		new IHighlightingFunction() {
-
+	private static final IHighlightingFunction unknownCostHighlightingFunction = new IHighlightingFunction() 
+	{
 			@Override
 			public boolean requiresHighlighting(ITableCell cell)
 			{
@@ -99,6 +107,9 @@ public class CostStatementComponent extends AbstractComponent
 			}
 	};
 
+	// region used for price updates
+	private Region defaultRegion = null;
+	
 	private volatile ManufacturingJobNode jobRequest;
 	private volatile CostStatement statement;
 	
@@ -114,14 +125,13 @@ public class CostStatementComponent extends AbstractComponent
 	@Resource(name="shoppinglist-manager")
 	private ShoppingListManager shoppingListManager;
 	
-	private final IPriceInfoChangeListener priceChangeListener =
-		new IPriceInfoChangeListener() {
+	private final IPriceInfoChangeListener priceChangeListener = new IPriceInfoChangeListener() {
 
 		@Override
-		public void priceChanged(IMarketDataProvider caller, Region region,
-				InventoryType type)
+		public void priceChanged(IMarketDataProvider caller, Region region, Set<InventoryType> type)
 		{
-			log.debug("priceChanged(): Changed for "+type.getName() );
+			System.out.println("priceChanged(): Prices changed ... IMPLEMENT COST STATEMENT UPDATE");
+			refresh();
 		}
 	};
 
@@ -275,10 +285,7 @@ public class CostStatementComponent extends AbstractComponent
 			}
 		}
 		
-		final ShoppingListEditorComponent comp = 
-			new ShoppingListEditorComponent( 
-					"Production of "+job.getQuantity()+" x "+
-					job.getBlueprint().getProductType().getName(), "" , items );
+		final ShoppingListEditorComponent comp =  new ShoppingListEditorComponent( "Production of "+job.getQuantity()+" x "+ job.getBlueprint().getProductType().getName(), "" , items );
 		
 		comp.setModal( true );
 		ComponentWrapper.wrapComponent( comp ).setVisible( true );
@@ -298,13 +305,12 @@ public class CostStatementComponent extends AbstractComponent
 		ComponentWrapper.wrapComponent( component ).setVisible( true );
 	}
 	
-	private List<ItemWithQuantity> getRequiredMaterialsFromCostStatement() {
+	private List<ItemWithQuantity> getRequiredMaterialsFromCostStatement()
+	{
+		final List<ItemWithQuantity> items = new ArrayList<ItemWithQuantity>();
 		
-		final List<ItemWithQuantity> items =
-			new ArrayList<ItemWithQuantity>();
-		
-		for ( CostPosition p : statement.getCostPositions() ) {
-		
+		for ( CostPosition p : statement.getCostPositions() )
+		{
 			if ( p.getKind() != CostPosition.Kind.FIXED_COSTS ) {
 				continue;
 			}
@@ -322,14 +328,12 @@ public class CostStatementComponent extends AbstractComponent
 	
 	private List<ItemWithQuantity> getAllMineralsFromCostStatement()
 	{
-		final List<ItemWithQuantity> items =
-			new ArrayList<ItemWithQuantity>();
+		final List<ItemWithQuantity> items = new ArrayList<ItemWithQuantity>();
 		
 		System.out.println("---------------- "+statement+" ------------");
 		
-		for ( CostPosition p : statement.getCostPositions() ) {
-			
-			System.out.println("Inspecting "+p);
+		for ( CostPosition p : statement.getCostPositions() ) 
+		{
 			if ( p.getTreeNode() == null || ! ( p.getTreeNode() instanceof RequiredMaterialNode) ) {
 				continue;
 			}
@@ -340,7 +344,6 @@ public class CostStatementComponent extends AbstractComponent
 				continue;
 			}
 			final ItemWithQuantity mineral = new ItemWithQuantity( material, p.getQuantity() );
-			System.out.println("=> adding "+mineral);
 			items.add( mineral );
 		}
 		return items;
@@ -352,7 +355,8 @@ public class CostStatementComponent extends AbstractComponent
 		refresh();
 	}
 
-	public void refresh() {
+	public void refresh() 
+	{
 		SwingUtilities.invokeLater( new Runnable() {
 
 			@Override
@@ -369,8 +373,29 @@ public class CostStatementComponent extends AbstractComponent
 	}
 
 	protected static ITableCell cell(CostPosition pos , ISKAmount amount) {
-		return new CostPositionCell( pos , toString( amount ) ); // cell( toString( amount ) );
+		return new CostPositionCell( pos , toString( amount ) ); 
 	}
+	
+	protected interface ICellEditingCallback {
+		public void setValue(ITableCell cell,Object value);
+	}
+	
+	protected static ITableCell editableCell(CostPosition pos , ISKAmount amount, final ICellEditingCallback callback) 
+	{
+		return new CostPositionCell( pos , toString( amount ) ) 
+		{
+			@Override
+			public void setValue(Object value) 
+			{
+				callback.setValue( this , value );
+			}
+			
+			@Override
+			public boolean isEditable() {
+				return true;
+			}
+		};
+	}	
 	
 	protected static ITableCell cell(ISKAmount amount) {
 		return cell( toString( amount ) );
@@ -445,14 +470,24 @@ public class CostStatementComponent extends AbstractComponent
 		
 		
 		// put on clipboard
-		final Clipboard clipboard = 
-			Toolkit.getDefaultToolkit().getSystemClipboard(); 
+		final Clipboard clipboard =  Toolkit.getDefaultToolkit().getSystemClipboard(); 
 
 		clipboard.setContents( new PlainTextTransferable( text.toString() ) , null );
 	}
-	
-	protected void populateProductionCostTable() {
 
+	protected Region getDefaultRegion() 
+	{
+		if ( defaultRegion == null ) 
+		{
+			IRegionQueryCallback callback = RegionSelectionDialog.createCallback( null , dataModel );
+			defaultRegion = callback.getRegion("Please selected the region for which to set buy prices");
+		}
+		return defaultRegion;
+	}
+		
+	
+	protected void populateProductionCostTable() 
+	{
 		if ( jobRequest == null || costCalculator == null ) {
 			System.out.println("populateProductionCostTable(): Cannot update - dependencies not set.");
 			return;
@@ -474,12 +509,9 @@ public class CostStatementComponent extends AbstractComponent
 
 		} );
 
-		final ProductionCostStatementGenerator calc =
-			new ProductionCostStatementGenerator( jobRequest ,
-					costCalculator , dataModel );
+		final ProductionCostStatementGenerator calc = new ProductionCostStatementGenerator( jobRequest , costCalculator , dataModel );
 
-		statement = 
-			calc.createCostStatement();
+		statement =  calc.createCostStatement();
 
 		tableModel.addRow( 
 				rightAligned( bold( cell( "Product:") ) ), 
@@ -502,11 +534,10 @@ public class CostStatementComponent extends AbstractComponent
 		);
 		
 		// sort by type & description
-		final List<CostPosition> sorted =
-			new ArrayList<CostPosition>( statement.getCostPositions() );
+		final List<CostPosition> sorted = new ArrayList<CostPosition>( statement.getCostPositions() );
 		
-		Collections.sort( sorted , new Comparator<CostPosition>() {
-
+		Collections.sort( sorted , new Comparator<CostPosition>() 
+		{
 			@Override
 			public int compare(CostPosition o1, CostPosition o2)
 			{
@@ -526,14 +557,43 @@ public class CostStatementComponent extends AbstractComponent
 		ISKAmount totalFixedCost = ISKAmount.ZERO_ISK;
 		ISKAmount totalVariableCost = ISKAmount.ZERO_ISK;
 		ISKAmount totalOneTimeCost = ISKAmount.ZERO_ISK;
-		for ( CostPosition p : sorted ) 
+		for ( final CostPosition p : sorted ) 
 		{
 			final ISKAmount amount = getTotalAmount( p );
+			
+			final ICellEditingCallback cellEditCb = new ICellEditingCallback() {
+				
+				@Override
+				public void setValue(ITableCell cell, Object value) 
+				{
+					final CostPositionCell cp = (CostPositionCell) cell;
+					final InventoryType itemType = cp.getCostPosition().getItemType();
+					if ( itemType != null && value instanceof String && StringUtils.isNotBlank((String) value) ) 
+					{
+						try 
+						{
+							final long parsed = AmountHelper.parseISKAmount( (String) value );
+							
+							final PriceInfo priceInfo = new PriceInfo(Type.BUY,itemType,Source.USER_PROVIDED);
+							priceInfo.setRegion( getDefaultRegion() );
+							priceInfo.setMinPrice( parsed );
+							priceInfo.setAveragePrice( parsed );
+							priceInfo.setMaxPrice( parsed );
+							priceInfo.setTimestamp( new EveDate( getSystemClock() ) );
+							
+							marketDataProvider.store( priceInfo );
+						} 
+						catch(Exception e) {
+							e.printStackTrace();
+						}
+					}
+				}
+			};
 			tableModel.addRow(
 					centered( cell( classify( p) ) ),
 					rightAligned( cell( ""+p.getQuantity() ) ),
 					leftAligned(  cell( p.getDescription() ) ),
-					rightAligned( highlightUnknownCost( cell( p , p.getPricePerUnit() ) ) ),
+					rightAligned( highlightUnknownCost( editableCell( p , p.getPricePerUnit() , cellEditCb) ) ),
 					rightAligned( highlightUnknownCost( cell( p , amount ) ) )
 			);
 
@@ -599,6 +659,8 @@ public class CostStatementComponent extends AbstractComponent
 		);
 		
 		table.setModel( tableModel );
+		final JTextField tf = new JTextField();
+		table.setDefaultEditor( ITableCell.class , new DefaultCellEditor(tf) );	
 	}
 
 	protected static ITableCell centered(ITableCell cell) {
@@ -618,7 +680,8 @@ public class CostStatementComponent extends AbstractComponent
 		return cell;
 	}
 	
-	protected static ITableCell highlightUnknownCost(ITableCell cell) {
+	protected static ITableCell highlightUnknownCost(ITableCell cell)
+	{
 		if ( cell instanceof CostPositionCell ) {
 			cell.getAttributes().setAttribute( CellAttributes.HIGHLIGHTING_FUNCTION, unknownCostHighlightingFunction );
 			return cell;
@@ -633,7 +696,8 @@ public class CostStatementComponent extends AbstractComponent
 
 	private String classify(CostPosition p)
 	{
-		switch(p.getKind() ) {
+		switch(p.getKind() )
+		{
 			case FIXED_COSTS:
 				return "fixed";
 			case VARIABLE_COSTS:

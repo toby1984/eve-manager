@@ -49,11 +49,6 @@ public class FilePriceInfoStoreTest extends TestHelper {
 			createTempDir();
 	}
 
-	private IMarketDataProvider createDataProvider()
-	{
-		return EasyMock.createNiceMock( IMarketDataProvider.class );
-	}
-	
 	public void testStore() throws Exception {
 		
 		final EveDate date = parseDate("2009-10-09 00:00:00" );
@@ -66,13 +61,13 @@ public class FilePriceInfoStoreTest extends TestHelper {
 		info.setMaxPrice( 3 );
 		info.setTimestamp( date );
 		
-		FilePriceInfoStore store = new FilePriceInfoStore( createDataProvider() , clock  );
+		FilePriceInfoStore store = new FilePriceInfoStore( clock  );
 		store.setBaseDir( tmpDir );
 		
-		store.store( info );
+		store.save( info );
 		store.persist();
 		
-		store = new FilePriceInfoStore( createDataProvider()  , clock );
+		store = new FilePriceInfoStore( clock );
 		store.setBaseDir( tmpDir );
 		
 		final MarketFilter filter =
@@ -104,16 +99,16 @@ public class FilePriceInfoStoreTest extends TestHelper {
 		info.setMaxPrice( 3 );
 		info.setTimestamp( date );
 		
-		FilePriceInfoStore store = new FilePriceInfoStore( createDataProvider() , clock  );
+		FilePriceInfoStore store = new FilePriceInfoStore( clock  );
 		store.setBaseDir( tmpDir );
 		
-		store.store( info );
+		store.save( info );
 		
 		info.setAveragePrice( 5 );
-		store.store( info );
+		store.save( info );
 		
 		info.setAveragePrice( 7 );
-		store.store( info );
+		store.save( info );
 		
 		store.persist();
 		
@@ -134,7 +129,7 @@ public class FilePriceInfoStoreTest extends TestHelper {
 		
 		assertEquals( "Expected exactly one line , got : "+lines ,1 , lines.size() );
 		
-		store = new FilePriceInfoStore( createDataProvider() , clock  );
+		store = new FilePriceInfoStore( clock  );
 		store.setBaseDir( tmpDir );
 		
 		final MarketFilter filter =
@@ -167,10 +162,10 @@ public class FilePriceInfoStoreTest extends TestHelper {
 		info.setMaxPrice( 3 );
 		info.setTimestamp( date );
 		
-		FilePriceInfoStore store = new FilePriceInfoStore( createDataProvider() , clock  );
+		FilePriceInfoStore store = new FilePriceInfoStore( clock  );
 		store.setBaseDir( tmpDir );
 		
-		store.store( info );
+		store.save( info );
 
 		PriceInfo info2 =
 			createPriceInfo(Type.BUY , ITEM3 , REGION1 );
@@ -182,7 +177,7 @@ public class FilePriceInfoStoreTest extends TestHelper {
 		info2.setMaxPrice( 3 );
 		info2.setTimestamp( date2 );		
 		
-		store.store( info2 );
+		store.save( info2 );
 		
 		store.persist();
 		
@@ -203,7 +198,7 @@ public class FilePriceInfoStoreTest extends TestHelper {
 		
 		assertEquals( "Expected exactly one line , got : "+lines ,1 , lines.size() );
 		
-		store = new FilePriceInfoStore(createDataProvider() , clock  );
+		store = new FilePriceInfoStore( clock  );
 		store.setBaseDir( tmpDir );
 		
 		final MarketFilter filter =
@@ -241,23 +236,20 @@ public class FilePriceInfoStoreTest extends TestHelper {
 		info.setMaxPrice( 3 );
 		info.setTimestamp( date );
 		
-		final IMarketDataProvider provider=
-			EasyMock.createStrictMock( IMarketDataProvider.class );
+		final IMarketDataProvider provider= EasyMock.createStrictMock( IMarketDataProvider.class );
 		
-		provider.priceInfoChanged( REGION1 , ITEM1);
-
 		EasyMock.replay( provider );
 		
-		FilePriceInfoStore store = new FilePriceInfoStore( provider, clock  );
+		FilePriceInfoStore store = new FilePriceInfoStore( clock  );
 		store.setBaseDir( tmpDir );
 		
-		store.store( info );
+		store.save( info );
 		
 		EasyMock.verify( provider );
 		
 		store.persist();
 		
-		store = new FilePriceInfoStore( provider , clock );
+		store = new FilePriceInfoStore( clock );
 		store.setBaseDir( tmpDir );
 		
 		final MarketFilter filter =
@@ -286,17 +278,15 @@ public class FilePriceInfoStoreTest extends TestHelper {
 		
 		EasyMock.reset( provider );
 		
-		provider.priceInfoChanged( REGION1 , ITEM1);
-
 		EasyMock.replay( provider );
 		
-		store.store( loaded );
+		store.save( loaded );
 		
 		EasyMock.verify( provider );
 		
 		store.persist();
 		
-		store = new FilePriceInfoStore(createDataProvider() , clock );
+		store = new FilePriceInfoStore( clock );
 		store.setBaseDir( tmpDir );
 		
 		result = store.get( filter , ITEM1 );

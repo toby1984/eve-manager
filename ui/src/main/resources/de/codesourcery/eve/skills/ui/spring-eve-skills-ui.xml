@@ -112,7 +112,6 @@
     </bean>
     
     <bean id="priceinfo-store" class="de.codesourcery.eve.skills.market.impl.FilePriceInfoStore" >
-    	<constructor-arg><ref local="marketdata-provider" /></constructor-arg>
     	<constructor-arg><ref local="system-clock" /></constructor-arg>
     </bean>
     

@@ -64,7 +64,8 @@ public class RegionSelectionDialog extends JDialog {
 		}
 	}
 	
-	private interface IRegionProvider {
+	private interface IRegionProvider 
+	{
 		public Region getRegion(long id);
 		public List<Region> fetchAll();
 	}
@@ -77,14 +78,14 @@ public class RegionSelectionDialog extends JDialog {
 		return createCallback( null , createRegionProvider( dao ) );
 	}
 	
-	public static IRegionQueryCallback createCallback(Frame parent , final IRegionProvider dao) {
+	public static IRegionQueryCallback createCallback(Frame parent , final IRegionProvider dao) 
+	{
 		return new IRegionQueryCallback() {
 
 			@Override
 			public Region getRegion(String message) {
 				
-				final RegionSelectionDialog dialog =
-					new RegionSelectionDialog(message,dao);
+				final RegionSelectionDialog dialog = new RegionSelectionDialog(message,dao);
 				
 				dialog.pack();
 				dialog.setLocationRelativeTo( null );
@@ -99,9 +100,10 @@ public class RegionSelectionDialog extends JDialog {
 		};
 	}
 	
-	public static IRegionProvider createRegionProvider(final IRegionDAO model) {
-		return new IRegionProvider() {
-
+	public static IRegionProvider createRegionProvider(final IRegionDAO model)
+	{
+		return new IRegionProvider() 
+		{
 			@Override
 			public List<Region> fetchAll()
 			{
@@ -115,7 +117,8 @@ public class RegionSelectionDialog extends JDialog {
 			} };
 	}
 	
-	private static IRegionProvider createRegionProvider(final IStaticDataModel model) {
+	private static IRegionProvider createRegionProvider(final IStaticDataModel model) 
+	{
 		return new IRegionProvider() {
 
 			@Override
