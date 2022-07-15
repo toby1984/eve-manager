@@ -48,7 +48,7 @@ limitations under the License.
     <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>
-      <version>3.1.12</version>
+      <version>8.0.28</version>
     </dependency>
 
     <dependency>
